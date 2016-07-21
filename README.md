@@ -19,7 +19,7 @@ Make sure to use "git pull" to ensure you have the latest master branch.
 
 When on master branch, type
 
-**git checkout -b <branch>**
+**git checkout -b branch_name**
 
 This will create a new local branch for you, typing "git status" will show you what branch you are on. The -b flag will create a new local branch if it does not exist already.
 
@@ -27,7 +27,7 @@ A good branch name for a feature might include a brief description of the featur
 
 Once you are satisfied with your changes, "git status" will show you the current state of your local directory. Files that have changed and are relevant can be added to the staging area using:
 
-**git add <filename>**
+**git add filename**
 
 Once all files of interest have been added, use git commit to add all of the files to the staging area, and use the -m flag to add a message describing the changes. For example:
 
