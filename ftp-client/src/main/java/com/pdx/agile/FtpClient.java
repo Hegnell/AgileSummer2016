@@ -74,6 +74,13 @@ public class FtpClient {
                 } catch (IOException e) {
                     exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
                 }
+            } else if (firstArg.equals("mkdir")) {
+                if(userInput[1] != null && !userInput[1].isEmpty()){
+                    System.out.println("mkdir: an absolute or relative path is required argument");
+                    printHelp();
+                } else {
+                    mkdirRemoteServer(userInput[1]);
+                }
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
             } else if (userInput[0].equals("help")) {
@@ -126,6 +133,27 @@ public class FtpClient {
         return login;
     }
 
+    private static boolean mkdirRemoteServer(String makePath) {
+        boolean success = false;
+
+        try {
+            success = ftpClient.makeDirectory(makePath);
+
+            if (!success) {
+                System.out.println("Could not create directory " + makePath + " on remote server. Permissions?");
+            } else {
+                System.out.println("Successfully created directory" + makePath);
+            }
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to create remote directory.", e, debug);
+        }
+
+        return success;
+    }
+
     private static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
@@ -148,6 +176,7 @@ public class FtpClient {
         System.out.println("This is a help section, this is where commands and usage info will go.");
         System.out.println("ls\t\t\t\t List files in current directory.");
         System.out.println("pwd\t\t\t Show current working directory.");
+        System.out.println("mkdir <path>\t\t\t Create a directory on the remote server.");
         System.out.println("help\t\t\t Get available commands.");
         System.out.println("quit\t\t\t Exit the program.");
     }
