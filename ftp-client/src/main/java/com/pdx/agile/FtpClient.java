@@ -45,11 +45,16 @@ public class FtpClient {
         //print server's welcome message
         System.out.println(ftpClient.getReplyString());
 
-        username = readUserInput(scanner, "Enter your username: ");
-        password = readUserInput(scanner, "Enter your password: ");
 
-        //if loginToServer returns false, no reason to keep going.
-        boolean keepGoing = loginToServer(username,password);
+        boolean keepGoing = false;
+
+        //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
+        do {
+            username = readUserInput(scanner, "Enter your username: ");
+            password = readUserInput(scanner, "Enter your password: ");
+
+            keepGoing = loginToServer(username, password);
+        } while (!keepGoing);
 
 
         while(keepGoing) {
@@ -104,8 +109,6 @@ public class FtpClient {
         boolean login = false;
 
         try {
-
-
             login = ftpClient.login(username, password);
 
             if (!login) {
@@ -115,7 +118,7 @@ public class FtpClient {
             }
 
         } catch (FTPConnectionClosedException e) {
-            exitWithError("The FTP server has closed the connection before we could attempt to login.", e, debug);
+            exitWithError("The FTP server has closed the connection. Too many invalid login attempts.", e, debug);
         } catch (IOException e) {
             exitWithError("An I/O error occurred when attempting to login.", e, debug);
         }
