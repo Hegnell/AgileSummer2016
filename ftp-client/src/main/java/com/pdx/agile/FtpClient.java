@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Scanner;
 import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
 
 /**
@@ -12,9 +13,9 @@ import org.apache.commons.net.ftp.FTPFile;
  */
 public class FtpClient {
     private static FTPClient ftpClient;
+    private static boolean debug = false;
 
     public static void main( String[] args ) {
-        boolean debug = false;
 
         for (String arg : args) {
             if (arg.equals("-debug")) {
@@ -29,8 +30,6 @@ public class FtpClient {
         System.out.println("Welcome to our FTP client.\n");
 
         String serverName = readUserInput(scanner, "Enter the server name: ");
- //       username = readUserInput(scanner, "Enter your username: ");
- //       password = readUserInput(scanner, "Enter your password");
 
         ftpClient = new FTPClient();
 
@@ -43,7 +42,20 @@ public class FtpClient {
 
         System.out.println("Connected to server successfully!");
 
-        boolean keepGoing = true;
+        //print server's welcome message
+        System.out.println(ftpClient.getReplyString());
+
+
+        boolean keepGoing = false;
+
+        //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
+        do {
+            username = readUserInput(scanner, "Enter your username: ");
+            password = readUserInput(scanner, "Enter your password: ");
+
+            keepGoing = loginToServer(username, password);
+        } while (!keepGoing);
+
 
         while(keepGoing) {
 
@@ -71,15 +83,47 @@ public class FtpClient {
             }
         }
 
+        //disconnect if still connected
+        try {
+            ftpClient.disconnect();
+        } catch (IOException exitErr) {
+            if (debug) {
+                exitErr.printStackTrace();
+            }
+        }
+
+
     }
 
     // Connect to the server.
     private static boolean connectToServer(String serverName, int port) throws IOException{
         ftpClient.connect(serverName, port);
+        
         int reply = ftpClient.getReplyCode();
         System.out.println("Servers reply: "  + reply);
 
         return true;
+    }
+
+    private static boolean loginToServer(String username, String password) {
+        boolean login = false;
+
+        try {
+            login = ftpClient.login(username, password);
+
+            if (!login) {
+                System.out.println("Invalid Username and/or Password.");
+            } else {
+                System.out.println("You have logged in successfully!");
+            }
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection. Too many invalid login attempts.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to login.", e, debug);
+        }
+
+        return login;
     }
 
     private static void showPath() throws IOException {
@@ -112,6 +156,15 @@ public class FtpClient {
         System.out.println(error);
         if (debug) {
             e.printStackTrace();
+        }
+
+        //if still connected, gracefully disconnect
+        try {
+            ftpClient.disconnect();
+        } catch (IOException exitErr) {
+            if (debug) {
+                exitErr.printStackTrace();
+            }
         }
         System.exit(1);
     }
