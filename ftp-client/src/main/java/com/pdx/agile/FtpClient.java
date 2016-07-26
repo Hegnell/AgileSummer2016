@@ -1,6 +1,7 @@
 package com.pdx.agile;
 
-import java.io.IOException;
+import java.io.*;
+import java.lang.reflect.Array;
 import java.util.Scanner;
 import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTPClient;
@@ -22,8 +23,10 @@ public class FtpClient {
             }
         }
 //        String serverName = "ftp.ed.ac.uk";
+//        String serverName = "speedtest.tele2.net";
+//        String serverName = "ftp.gnu.org";
         String username = "anonymous";
-        String password = "anonymous";
+        String password = "lrs@pdx.edu";
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("Welcome to our FTP client.\n");
@@ -43,6 +46,18 @@ public class FtpClient {
 
         System.out.println("Connected to server successfully!");
 
+        try {
+            if(ftpClient.login(username, password) == false) {
+                System.out.println("Login failed");
+            } else {
+                System.out.println("Login success");
+            }
+        } catch (IOException e) {
+            exitWithError("Was unable to login.", e, debug);
+        }
+
+        ftpClient.enterLocalPassiveMode();
+
         boolean keepGoing = true;
 
         while(keepGoing) {
@@ -60,7 +75,18 @@ public class FtpClient {
                 try {
                     listFiles();
                 } catch (IOException e) {
-                    exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                    exitWithError("Was unable to list the contents of the directory on the server: " + e.getMessage(), e, debug);
+                }
+            } else if (firstArg.equals("get")) {
+                try {
+                    String path = userInput[1];
+                    try {
+                        retrieveFile(path);
+                    } catch (IOException e) {
+                        exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
+                    }
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    System.out.println("get requires a filepath");
                 }
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
@@ -82,17 +108,33 @@ public class FtpClient {
         return true;
     }
 
+    private static boolean login(String username, String password) throws IOException {
+        return (ftpClient.login(username, password));
+    }
+
     private static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
 
     // List files story.
     private static void listFiles() throws IOException {
-       FTPFile[] files = ftpClient.listFiles("/.");
-
+       FTPFile[] files = ftpClient.listFiles();
+        System.out.println(files.length + " files found");
        for (FTPFile file : files) {
            System.out.println(file.getName());
        }
+    }
+
+    //Retrieve a file from the server and save it locally.
+    private static void retrieveFile(String path) throws IOException {
+        String localPath = path;
+        File localFile = new File(localPath);
+        OutputStream os = new FileOutputStream(localFile);
+        if (ftpClient.retrieveFile("./" + path, os) == false) {
+            //retrieveFile returns false if file is not found on remote server
+            localFile.delete();
+        }
+        os.close();
     }
 
     private static String readUserInput(Scanner scanner, String prompt) {
