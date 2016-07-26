@@ -67,26 +67,27 @@ public class FtpClient {
                 try {
                     showPath();
                 } catch (IOException e) {
-                    exitWithError("Was unable to get the path on the server.", e, debug);
+                    exitWithError("Unable to get the path on the server.", e, debug);
                 }
             } else if (firstArg.equals("ls")) {
                 try {
                     listFiles();
                 } catch (IOException e) {
-                    exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                    exitWithError("Uable to list the contents of the directory on the server.", e, debug);
                 }
             } else if (firstArg.equals("put")){
             	try{
             		sendFiles(userInput[1]);
-            	} catch (IOException e) {
+            	}catch (IOException e) {
             		exitWithError("Unable to upload the file onto the server.", e, debug);
             	}
+            	
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
             } else if (userInput[0].equals("help")) {
                 printHelp();
             } else {
-                System.out.println("Did not understand your command, type \"help\" for available commands.");
+                System.out.println("Command not found. Type \"help\" for available commands.");
             }
         }
 
@@ -98,8 +99,6 @@ public class FtpClient {
                 exitErr.printStackTrace();
             }
         }
-
-
     }
 
     // Connect to the server.
@@ -148,17 +147,16 @@ public class FtpClient {
     
     // Upload files onto the server
     private static void sendFiles(String fileToFTP) throws IOException{
+    	Scanner scanner = new Scanner(System.in);
     	// specify local directory
-    	// temporarily use the following local and remote directories for testing 
-    	String localDirectory = "/home/lorch1010/Downloads";
+    	String localDirectory = readUserInput(scanner, "Please enter your local directory: ");
     	
+    	// specify remote directory
     	// need to contact ftpmaster@ed.ac.uk for testing purposes if using the current FTP server
-    	String remoteDirectory = "/incoming";
+    	String remoteDirectory = readUserInput(scanner, "Please enter the remote directory: ");
     	
-    	// enter local passive mode to enable data transers
+    	// enter local passive mode to enable data transfers
     	ftpClient.enterLocalPassiveMode();
-    	// print remote server type
-    	System.out.println("Remote system is " + ftpClient.getSystemType());
     	
     	// change working directory to the specified remote directory
     	ftpClient.changeWorkingDirectory(remoteDirectory);
@@ -169,8 +167,10 @@ public class FtpClient {
     	// store the file in the remote server	
     	if(ftpClient.storeFile(fileToFTP, input) == true){
     		// if successful, print the following line
-    		// 
     		System.out.println(fileToFTP + " uploaded successfully.");
+    	}else{
+    		// might be failed at this point
+    		System.out.println("Upload failed.");
     	}
 
     	// close the stream
