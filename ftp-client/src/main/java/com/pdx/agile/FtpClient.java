@@ -45,7 +45,9 @@ public class FtpClient {
         //print server's welcome message
         System.out.println(ftpClient.getReplyString());
 
-
+        //enter local passive mode to get files/directories to display
+        ftpClient.enterLocalPassiveMode();
+        
         boolean keepGoing = false;
 
         //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
@@ -56,41 +58,46 @@ public class FtpClient {
             keepGoing = loginToServer(username, password);
         } while (!keepGoing);
 
+        try{
+          while(keepGoing) {
 
-        while(keepGoing) {
-
-            System.out.print(">> ");
-            String[] userInput = scanner.nextLine().trim().split(" ");
-            String firstArg = userInput[0];
-            if (firstArg.equals("pwd")) {
-                try {
-                    showPath();
-                } catch (IOException e) {
-                    exitWithError("Was unable to get the path on the server.", e, debug);
-                }
-            } else if (firstArg.equals("ls")) {
-                try {
-                    listFiles();
-                } catch (IOException e) {
-                    exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
-                }
-            } else if (userInput[0].equals("quit")) {
-                keepGoing = false;
-            } else if (userInput[0].equals("help")) {
-                printHelp();
-            } else {
-                System.out.println("Did not understand your command, type \"help\" for available commands.");
-            }
+              System.out.print(">> ");
+              String[] userInput = scanner.nextLine().trim().split(" ");
+              String firstArg = userInput[0];
+              if (firstArg.equals("pwd")) {
+                  try {
+                      showPath();
+                  } catch (IOException e) {
+                      exitWithError("Was unable to get the path on the server.", e, debug);
+                  }
+              } else if (firstArg.equals("ls")) {
+                  try {
+                      listFiles();
+                  } catch (IOException e) {
+                      exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                  }
+              } else if (userInput[0].equals("quit")) {
+                  if(confirm("disconnect and exit the program")) {
+                        keepGoing = false;
+                  }
+              } else if (userInput[0].equals("help")) {
+                  printHelp();
+              } else {
+                  System.out.println("Did not understand your command, type \"help\" for available commands.");
+              }
+          }
+        }finally {
+          disconnectFromServer();
         }
 
         //disconnect if still connected
-        try {
+        /*try {
             ftpClient.disconnect();
         } catch (IOException exitErr) {
             if (debug) {
                 exitErr.printStackTrace();
             }
-        }
+        }*/
 
 
     }
@@ -124,6 +131,19 @@ public class FtpClient {
         }
 
         return login;
+    }
+    
+    //Disconnect from the server.
+    private static void disconnectFromServer(){
+        if(ftpClient.isConnected()) {
+            try {
+                System.out.println("Disconnecting...");
+                ftpClient.disconnect();
+                System.out.println("Disconnected from server.");
+            } catch (IOException e) {
+                exitWithError("Problem disconnecting from server", e, debug);
+            }
+        }
     }
 
     private static void showPath() throws IOException {
@@ -167,5 +187,22 @@ public class FtpClient {
             }
         }
         System.exit(1);
+    }
+    
+    //Confirms the action specified by the string passed. Returns a boolean value representing the user's decision
+    private static boolean confirm(String action) {
+        String input;
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Are you sure you want to " + action + "?(y/n)");
+        while(true){
+            input = scanner.nextLine();
+            if (input.equalsIgnoreCase("y")) {
+                return true;
+            } else if (input.equalsIgnoreCase("n")) {
+                return false;
+            } else {
+                System.out.println("Please enter a valid response, 'y' or 'n'.");
+            }
+        }
     }
 }
