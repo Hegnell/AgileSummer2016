@@ -23,7 +23,12 @@ public class FtpClient {
                 debug = true;
             }
         }
-//        String serverName = "ftp.ed.ac.uk";
+
+        // server: 138.68.1.7
+        // port: 8821
+        // userName: ftptestuser
+        // password: 2016AgileTeam2
+        
         String username = "anonymous";
         String password = "anonymous";
 
@@ -36,7 +41,7 @@ public class FtpClient {
 
         System.out.println("Attempting to connect to server...");
         try {
-            boolean connect = connectToServer(serverName, 21);
+            boolean connect = connectToServer(serverName, 8821);
         } catch (IOException e) {
             exitWithError("Unable to connect to the server.", e, debug);
         }
@@ -80,8 +85,7 @@ public class FtpClient {
             		sendFiles(userInput[1]);
             	}catch (IOException e) {
             		exitWithError("Unable to upload the file onto the server.", e, debug);
-            	}
-            	
+            	}          	
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
             } else if (userInput[0].equals("help")) {
@@ -138,7 +142,9 @@ public class FtpClient {
 
     // List files story.
     private static void listFiles() throws IOException {
-       FTPFile[] files = ftpClient.listFiles("/.");
+    	// changed the default directory to "upload"
+    	// and successfully tested the functionality of uploading a file
+       FTPFile[] files = ftpClient.listFiles("/upload");
 
        for (FTPFile file : files) {
            System.out.println(file.getName());
