@@ -1,8 +1,9 @@
 package com.pdx.agile;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Scanner;
-import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
@@ -22,7 +23,12 @@ public class FtpClient {
                 debug = true;
             }
         }
-//        String serverName = "ftp.ed.ac.uk";
+
+        // server: 138.68.1.7
+        // port: 8821
+        // userName: ftptestuser
+        // password: 2016AgileTeam2
+        
         String username = "anonymous";
         String password = "anonymous";
 
@@ -35,7 +41,7 @@ public class FtpClient {
 
         System.out.println("Attempting to connect to server...");
         try {
-            boolean connect = connectToServer(serverName, 21);
+            boolean connect = connectToServer(serverName, 8821);
         } catch (IOException e) {
             exitWithError("Unable to connect to the server.", e, debug);
         }
@@ -66,20 +72,26 @@ public class FtpClient {
                 try {
                     showPath();
                 } catch (IOException e) {
-                    exitWithError("Was unable to get the path on the server.", e, debug);
+                    exitWithError("Unable to get the path on the server.", e, debug);
                 }
             } else if (firstArg.equals("ls")) {
                 try {
                     listFiles();
                 } catch (IOException e) {
-                    exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                    exitWithError("Uable to list the contents of the directory on the server.", e, debug);
                 }
+            } else if (firstArg.equals("put")){
+            	try{
+            		sendFiles(userInput[1]);
+            	}catch (IOException e) {
+            		exitWithError("Unable to upload the file onto the server.", e, debug);
+            	}          	
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
             } else if (userInput[0].equals("help")) {
                 printHelp();
             } else {
-                System.out.println("Did not understand your command, type \"help\" for available commands.");
+                System.out.println("Command not found. Type \"help\" for available commands.");
             }
         }
 
@@ -91,8 +103,6 @@ public class FtpClient {
                 exitErr.printStackTrace();
             }
         }
-
-
     }
 
     // Connect to the server.
@@ -132,11 +142,45 @@ public class FtpClient {
 
     // List files story.
     private static void listFiles() throws IOException {
-       FTPFile[] files = ftpClient.listFiles("/.");
+    	// changed the default directory to "upload"
+    	// and successfully tested the functionality of uploading a file
+       FTPFile[] files = ftpClient.listFiles("/upload");
 
        for (FTPFile file : files) {
            System.out.println(file.getName());
        }
+    }
+    
+    // Upload files onto the server
+    private static void sendFiles(String fileToFTP) throws IOException{
+    	Scanner scanner = new Scanner(System.in);
+    	// specify local directory
+    	String localDirectory = readUserInput(scanner, "Please enter your local directory: ");
+    	
+    	// specify remote directory
+    	// need to contact ftpmaster@ed.ac.uk for testing purposes if using the current FTP server
+    	String remoteDirectory = readUserInput(scanner, "Please enter the remote directory: ");
+    	
+    	// enter local passive mode to enable data transfers
+    	ftpClient.enterLocalPassiveMode();
+    	
+    	// change working directory to the specified remote directory
+    	ftpClient.changeWorkingDirectory(remoteDirectory);
+    	System.out.println("Current directory is " + ftpClient.printWorkingDirectory());
+    	InputStream input;
+    	input = new FileInputStream(localDirectory + "/" + fileToFTP);
+    	
+    	// store the file in the remote server	
+    	if(ftpClient.storeFile(fileToFTP, input) == true){
+    		// if successful, print the following line
+    		System.out.println(fileToFTP + " uploaded successfully.");
+    	}else{
+    		// might be failed at this point
+    		System.out.println("Upload failed.");
+    	}
+
+    	// close the stream
+    	input.close();  	
     }
 
     private static String readUserInput(Scanner scanner, String prompt) {
@@ -146,7 +190,8 @@ public class FtpClient {
 
     private static void printHelp() {
         System.out.println("This is a help section, this is where commands and usage info will go.");
-        System.out.println("ls\t\t\t\t List files in current directory.");
+        System.out.println("ls\t\t\t List files in current directory.");
+        System.out.println("put + file\t\t Upload a file.");
         System.out.println("pwd\t\t\t Show current working directory.");
         System.out.println("help\t\t\t Get available commands.");
         System.out.println("quit\t\t\t Exit the program.");
