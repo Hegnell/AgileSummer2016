@@ -22,9 +22,9 @@ public class FtpClient {
                 debug = true;
             }
         }
-//        String serverName = "ftp.ed.ac.uk";
-        String username = "anonymous";
-        String password = "anonymous";
+//        String serverName = "138.68.1.7";
+        String username = "ftptestuser";
+        String password = "";
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("Welcome to our FTP client.\n");
@@ -35,7 +35,7 @@ public class FtpClient {
 
         System.out.println("Attempting to connect to server...");
         try {
-            boolean connect = connectToServer(serverName, 21);
+            boolean connect = connectToServer(serverName, 8821);
         } catch (IOException e) {
             exitWithError("Unable to connect to the server.", e, debug);
         }
@@ -76,10 +76,10 @@ public class FtpClient {
                 }
             } else if (firstArg.equals("mkdir")) {
                 if(userInput[1] != null && !userInput[1].isEmpty()){
-                    System.out.println("mkdir: an absolute or relative path is required argument");
-                    printHelp();
-                } else {
                     mkdirRemoteServer(userInput[1]);
+                } else {
+                    System.out.println("mkdir: an absolute or relative path is required argument\n");
+                    printHelp();
                 }
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
@@ -140,7 +140,7 @@ public class FtpClient {
             success = ftpClient.makeDirectory(makePath);
 
             if (!success) {
-                System.out.println("Could not create directory " + makePath + " on remote server. Permissions?");
+                System.out.println("Could not create directory " + makePath + " on remote server. Do you have the correct permissions?");
             } else {
                 System.out.println("Successfully created directory" + makePath);
             }
