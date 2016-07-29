@@ -81,6 +81,13 @@ public class FtpClient {
                     System.out.println("mkdir: an absolute or relative path is required argument\n");
                     printHelp();
                 }
+             } else if (firstArg.equals("cd")) {
+                if(userInput[1] != null && !userInput[1].isEmpty()){
+                    chdirRemoteServer(userInput[1]);
+                } else {
+                    System.out.println("cd: no path was specified\n");
+                    printHelp();
+                }
             } else if (userInput[0].equals("quit")) {
                 keepGoing = false;
             } else if (userInput[0].equals("help")) {
@@ -154,6 +161,26 @@ public class FtpClient {
         return success;
     }
 
+    private static boolean chdirRemoteServer(String cdPath) {
+        boolean success = false;
+
+        try {
+            success = ftpClient.changeWorkingDirectory(cdPath);
+
+            //no need to show anything if we could change to the directory
+            if (!success)
+                System.out.println("Could not change to directory " + cdPath);
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to change to remote directory.", e, debug);
+        }
+
+        return success;
+    }
+
+
     private static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
@@ -177,6 +204,7 @@ public class FtpClient {
         System.out.println("ls\t\t\t\t List files in current directory.");
         System.out.println("pwd\t\t\t Show current working directory.");
         System.out.println("mkdir <path>\t\t\t Create a directory on the remote server.");
+        System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
         System.out.println("help\t\t\t Get available commands.");
         System.out.println("quit\t\t\t Exit the program.");
     }
