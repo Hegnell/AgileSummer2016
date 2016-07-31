@@ -15,6 +15,8 @@ This tells you what branch you are currently on, along with what files are track
 
 Make sure to use "git pull" to ensure you have the latest master branch.
 
+The development branch "dev" is what you should be merging to.
+
 ## Basic workflow
 
 When on master branch, type
