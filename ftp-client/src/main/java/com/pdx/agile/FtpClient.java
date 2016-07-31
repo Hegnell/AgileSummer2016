@@ -99,17 +99,17 @@ public class FtpClient {
                         exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
                     }
                 } else if (firstArg.equals("mkdir")) {
-                    if (userInput[1] != null && !userInput[1].equals("")) {
-                        mkdirRemoteServer(userInput[1]);
-                    } else {
+                    if (userInput.length != 2) {
                         System.out.println("mkdir: and absolute or relative path is required argument\n");
                         printHelp();
+                    } else {
+                        mkdirRemoteServer(userInput[1]);
                     }
                 } else if (firstArg.equals("cd")) {
-                    if (userInput[1] != null && !userInput[1].equals("")) {
-                        chdirRemoteServer(userInput[1]);
+                    if (userInput.length != 2) {
+                        System.out.println("Incorrect arguments specified to cd. Type \"help\" for usage.\n");
                     } else {
-                        System.out.println("cd: no path was specified\n");
+                        chdirRemoteServer(userInput[1]);
                     }
                 } else if (firstArg.equals("get")) {
                     try {
@@ -123,18 +123,25 @@ public class FtpClient {
                         System.out.println("get requires a filepath");
                     }
                 } else if (firstArg.equals("put")) {
-                    if (userInput[1] != null && !userInput[1].equals("")) {
+                    if (userInput.length != 2) {
+                        System.out.println("No file was specified.");
+                    } else {
                         try {
                             sendFiles(userInput[1]);
                         } catch (IOException e) {
                             exitWithError("Unable to upload the file onto the server.", e, debug);
                         }
-                    } else {
-                        System.out.println("No file was specified.");
                     }
-                } else if (userInput[0].equals("quit")) {
+                } else if (firstArg.equals("chmod")) {
+                    if (userInput.length != 3) {
+                        System.out.println("Incorrect number of arguments provided to chmod.");
+                    } else {
+                        changeFilepermissions(userInput[1], userInput[2]);
+                    }
+
+                } else if (firstArg.equals("quit")) {
                     keepGoing = false;
-                } else if (userInput[0].equals("help")) {
+                } else if (firstArg.equals("help")) {
                     printHelp();
                 } else {
                     System.out.println("Did not understand your command, type \"help\" for available commands.");
@@ -235,7 +242,7 @@ public class FtpClient {
        FTPFile[] files = ftpClient.listFiles(".");
 
        for (FTPFile file : files) {
-           System.out.println(file.getName());
+           System.out.println(file.getRawListing());
        }
     }
 
@@ -279,6 +286,23 @@ public class FtpClient {
         scanner.close();
         input.close();
     }
+
+    private static void changeFilepermissions(String permissions, String file) {
+        if (validPermissions(permissions)) {
+            try {
+                ftpClient.sendSiteCommand("chmod " + permissions + " " + file);
+            } catch (IOException e) {
+                System.out.println("Failed to change permissions on file, double check the file name.");
+            }
+        } else {
+            System.out.println("Could not understand those permissions, check your chmod values.");
+        }
+
+    }
+
+    private static boolean validPermissions(String permissions) {
+        return permissions.matches("[0-7][0-7][0-7]");
+    }
     private static String readUserInput(Scanner scanner, String prompt) {
         System.out.print(prompt);
         return scanner.nextLine();
@@ -292,6 +316,7 @@ public class FtpClient {
         System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
         System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
+        System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
         System.out.println("help\t\t\t\t Get available commands.");
         System.out.println("quit\t\t\t\t Exit the program.");
     }
