@@ -3,8 +3,8 @@ package com.pdx.agile;
 import java.io.*;
 import java.util.*;
 
-import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
-import com.sun.tools.javac.file.SymbolArchive;
+//import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
+//import com.sun.tools.javac.file.SymbolArchive;
 import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPConnectionClosedException;
@@ -92,6 +92,12 @@ public class FtpClient {
                     } catch (IOException e) {
                         exitWithError("Was unable to get the path on the server.", e, debug);
                     }
+                } else if(firstArg.equals("lpwd")){
+                	try{
+                		showLocalPath();
+                	} catch (IOException e){
+                		exitWithError("Unable to get the local path.", e, debug);
+                	}
                 } else if (firstArg.equals("ls")) {
                     try {
                         listFiles();
@@ -111,6 +117,20 @@ public class FtpClient {
                     } else {
                         chdirRemoteServer(userInput[1]);
                     }
+                } else if (firstArg.equals("lcd")) {
+                	try{
+                		if(userInput[1] != null && !userInput[1].equals("")){
+                			changeLocalDir(userInput[1]);
+                		}               		
+                	} catch (IOException e){
+                		exitWithError("Unable to change local directory", e, debug);
+                	}
+                } else if (firstArg.equals("lls")) {
+                	try{
+                		listLocalFiles();
+                	} catch(IOException e){
+                		exitWithError("Unable to list local directories or files.", e, debug);
+                	}
                 } else if (firstArg.equals("get")) {
                     try {
                         String path = userInput[1];
@@ -236,6 +256,12 @@ public class FtpClient {
     private static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
+    
+    // display current working local directory
+    private static void showLocalPath() throws IOException {
+    	String currentDir = System.getProperty("user.dir");
+    	System.out.println(currentDir);
+    }
 
     // List files story.
     private static void listFiles() throws IOException {
@@ -244,6 +270,32 @@ public class FtpClient {
        for (FTPFile file : files) {
            System.out.println(file.getRawListing());
        }
+    }
+    
+    // List local directories and files
+    private static void listLocalFiles() throws IOException {
+    	// set the current working directory
+    	String currentDir = System.getProperty("user.dir");
+   
+        File directory = new File(currentDir);
+        File[] fList = directory.listFiles();
+        
+        for (File file : fList){
+                System.out.println(file.getName());
+        }
+    }
+    
+    // Change local directory
+    private static boolean changeLocalDir(String localDirectory) throws IOException {
+    	boolean success = false;
+    	File directory;
+    
+    	directory = new File(localDirectory).getAbsoluteFile();
+        if(directory.exists() || directory.mkdir()){
+            success = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
+        }  	
+        
+        return success;
     }
 
     // Retrieve a file from the server and save it locally.
@@ -267,7 +319,7 @@ public class FtpClient {
         // specify remote directory
         String remoteDirectory = readUserInput(scanner, "Please enter the remote directory: ");
 
-        // change working dirctory to the specifed remote directory
+        // change working directory to the specified remote directory
         ftpClient.changeWorkingDirectory(remoteDirectory);
         System.out.println("Current directory is " + ftpClient.printWorkingDirectory());
         InputStream input;
@@ -310,10 +362,13 @@ public class FtpClient {
 
     private static void printHelp() {
         System.out.println("This is a help section, this is where commands and usage info will go.");
-        System.out.println("ls\t\t\t\t\t List files in current directory.");
-        System.out.println("pwd\t\t\t\t\t Show current working directory.");
-        System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("ls\t\t\t\t List files in current directory.");
+        System.out.println("lls\t\t\t\t List local directories or files in the given path.");
+        System.out.println("pwd\t\t\t\t Show current working directory.");
+        System.out.println("lpwd\t\t\t\t Show current working local directory.");
+        System.out.println("mkdir <path>\t\t\t Create a directory on the remote server.");
         System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
+        System.out.println("lcd <path>\t\t\t Change the current local directory.");
         System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
