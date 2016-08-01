@@ -3,8 +3,8 @@ package com.pdx.agile;
 import java.io.*;
 import java.util.*;
 
-import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
-import com.sun.tools.javac.file.SymbolArchive;
+//import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
+//import com.sun.tools.javac.file.SymbolArchive;
 import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPConnectionClosedException;
@@ -115,7 +115,7 @@ public class FtpClient {
                     try {
                         String path = userInput[1];
                         try {
-                            retrieveFile(path);
+                            retrieveFile(path, ".");
                         } catch (IOException e) {
                             exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
                         }
@@ -246,17 +246,38 @@ public class FtpClient {
        }
     }
 
-    // Retrieve a file from the server and save it locally.
-    private static void retrieveFile(String path) throws IOException {
-        String localPath = path;
-        File localFile = new File(localPath);
-        OutputStream os = new FileOutputStream(localFile);
-        if (!ftpClient.retrieveFile("./" + path, os)) {
-            //retrieveFile returns false if file is not found on remote server.
-            localFile.delete();
+    //Retrieve a file from the server and save it locally.
+    private static void retrieveFile(String remotePath, String localPath) throws IOException {
+        //remotePath is what to get, localPath is the directory to put it in
+        if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
+            //directory change worked - remotePath is a directory, so we get multiple (recurse)
+            System.out.println("In directory recursion, remotePath = " + remotePath);
+            if( new File(localPath + "/" + remotePath).mkdirs() ) {
+                System.out.println("Created new directory: " + localPath + "/" + remotePath);
+            }
+            for( FTPFile file : ftpClient.listFiles() ) {
+                retrieveFile(file.getName(), localPath + "/" + remotePath);
+            }
+            ftpClient.changeWorkingDirectory("..");
+        } else {
+            System.out.println("In file get, localPath = " + localPath);
+            File localFile = new File(localPath + "/" + remotePath);
+            if(!localFile.exists()) {
+                System.out.println("Creating local file: " + remotePath);
+            } else {
+                System.out.println("Updating local file: " + remotePath);
+            }
+            OutputStream os = new FileOutputStream(localFile);
+            if (ftpClient.retrieveFile("./" + remotePath, os) == false) {
+                //retrieveFile returns false if file is not found on remote server
+                System.out.println("File \"" + ftpClient.printWorkingDirectory() + "/" + remotePath + "\" not found on remote server");
+                localFile.delete();
+            }
+            os.close();
         }
-        os.close();
     }
+
+
 
     // Upload files onto the server
     private static void sendFiles(String fileToFTP) throws IOException {
