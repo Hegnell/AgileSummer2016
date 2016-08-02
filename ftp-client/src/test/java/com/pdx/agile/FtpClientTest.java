@@ -3,6 +3,7 @@ package com.pdx.agile;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.apache.commons.net.ftp.FTPClient;
 
 /**
  * Unit test for simple App.
@@ -34,5 +35,13 @@ public class FtpClientTest
     public void testApp()
     {
         assertTrue( true );
+    }
+
+    public void testFilenameExtractor()
+    {
+        assertTrue(FtpClient.getFilenameFromPath("upload/lydia/A_Elbereth.txt").equals("A_Elbereth.txt"));
+        assertTrue(FtpClient.getFilenameFromPath("/upload/lydia/A_Elbereth.txt").equals("A_Elbereth.txt"));
+        assertTrue(FtpClient.getFilenameFromPath("/upload/lydia").equals("lydia"));
+        assertTrue(FtpClient.getFilenameFromPath("upload/lydia").equals("lydia"));
     }
 }
