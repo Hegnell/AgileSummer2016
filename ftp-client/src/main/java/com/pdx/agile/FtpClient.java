@@ -147,7 +147,9 @@ public class FtpClient {
                     }
 
                 } else if (firstArg.equals("quit")) {
-                    keepGoing = false;
+                    if (confirm("disconnect and quit the application", scanner)) {
+                        keepGoing = false;
+                    }
                 } else if (firstArg.equals("help")) {
                     printHelp();
                 } else {
@@ -361,7 +363,7 @@ public class FtpClient {
     // Confirms the action specified by the string passed. Returns a boolean value representing the user's decision.
     private static boolean confirm(String action, Scanner scanner) {
         String input;
-        System.out.println("Are you sure youw ant to " + action + "?(y/n)");
+        System.out.println("Are you sure you want to " + action + "?(y/n)");
 
         while (true) {
             input = scanner.nextLine();
