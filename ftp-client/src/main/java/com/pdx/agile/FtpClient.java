@@ -112,14 +112,15 @@ public class FtpClient {
                     }
                 } else if (firstArg.equals("get")) {
                     try {
-                        String path = userInput[1];
+                        String remotePath = userInput[1];
+                        String localPath = userInput[2];
                         try {
-                            retrieveFile(path, ".");
+                            retrieveFile(remotePath, localPath);
                         } catch (IOException e) {
                             exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        System.out.println("get requires a filepath");
+                        System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("put")) {
                     if (userInput.length != 2) {
@@ -254,25 +255,45 @@ public class FtpClient {
         return path.substring(lastSlash + 1, path.length());
     }
 
+    private static boolean goToPath(String remotePath) throws IOException {
+        if(remotePath.startsWith("/")){
+            return ftpClient.changeWorkingDirectory(remotePath);
+        } else {
+            return ftpClient.changeWorkingDirectory("./" + remotePath);
+        }
+    }
+
     private static void retrieveFile(String remotePath, String localPath) throws IOException {
+        String previousWorkingDirectory = ftpClient.printWorkingDirectory();
         String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
         System.out.println("root = " + root);
         if (ftpClient.printWorkingDirectory().equals(remotePath) ||
-                ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
-            if( new File(localPath + "/" + root).mkdir() ) {
+                goToPath(remotePath) == true) {
+            //we were in the requested directory or have successfully changed to it, so remotePath must be a directory
+            if(localPath.endsWith("/") == false) {
+                //ensure localPath ends with a "/"
+                localPath = localPath + "/";
+            }
+            if( new File(localPath + root).mkdir() ) {
                 System.out.println("Created new directory: " + localPath + "/" + root);
             }
-            retrieveFileRecursive(".", localPath + "/" + root);
+            retrieveFileRecursive(".", localPath + root);
         } else {
+            //remotePath is a file
             File localFile = new File(localPath + "/" + root);
             System.out.println("In single-file get, localPath = " + localPath + "/" + root);
             OutputStream os = new FileOutputStream(localFile);
-            if (ftpClient.retrieveFile("./" + remotePath, os) == false) {
+            if(remotePath.startsWith("/") == false) {
+                //handle relative path properly
+                remotePath = "./" + remotePath;
+            }
+            if (ftpClient.retrieveFile(remotePath, os) == false) {
                 System.out.println("File \"" + ftpClient.printWorkingDirectory() + "/" + remotePath + "\" not found on remote server");
                 localFile.delete();
             }
             os.close();
         }
+        ftpClient.changeWorkingDirectory(previousWorkingDirectory);
     }
 
     //Retrieve a directory structure recursively.
@@ -364,7 +385,7 @@ public class FtpClient {
         System.out.println("pwd\t\t\t\t\t Show current working directory.");
         System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
         System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
-        System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
+        System.out.println("get <rpath> <lpath>\t\t\t Download the remote file or directory at rpath to local folder lpath.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
         System.out.println("help\t\t\t\t Get available commands.");
