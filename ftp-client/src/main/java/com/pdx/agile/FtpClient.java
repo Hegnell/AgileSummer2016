@@ -177,7 +177,7 @@ public class FtpClient {
                     }
                 } else if (firstArg.equals("rmdir")) {
                     if (userInput.length != 2) {
-                         System.out.println("Incorrect number of arguments provided to rm.");
+                         System.out.println("Incorrect number of arguments provided to rmdir.");
                     } else {
                         try {
                             if (removeDirectory(userInput[1], "")) {
@@ -279,7 +279,7 @@ public class FtpClient {
         } catch (FTPConnectionClosedException e) {
             exitWithError("The FTP server has closed the connection.", e, debug);
         } catch (IOException e) {
-            exitWithError("An I/O error occurred when attempting to create the remote directory.", e, debug);
+            exitWithError("An I/O error occurred when attempting to remove file from the remote directory.", e, debug);
         }
 
         return  success;
