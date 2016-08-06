@@ -175,7 +175,7 @@ public class FtpClient {
                         }
 
                     }
-                } else if (firstArg.equals("rm")) {
+                } else if (firstArg.equals("rmdir")) {
                     if (userInput.length != 2) {
                          System.out.println("Incorrect number of arguments provided to rm.");
                     } else {
@@ -588,7 +588,7 @@ public class FtpClient {
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
         System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
-        System.out.println("rm <path>\t\t\t Remove a directory on the server.");
+        System.out.println("rmdir <path>\t\t\t Remove a directory on the server.");
         System.out.println("help\t\t\t\t Get available commands.");
         System.out.println("quit\t\t\t\t Exit the program.");
     }
