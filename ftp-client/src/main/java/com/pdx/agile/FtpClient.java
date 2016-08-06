@@ -266,7 +266,6 @@ public class FtpClient {
     private static void retrieveFile(String remotePath, String localPath) throws IOException {
         String previousWorkingDirectory = ftpClient.printWorkingDirectory();
         String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
-        System.out.println("root = " + root);
         if (ftpClient.printWorkingDirectory().equals(remotePath) ||
                 goToPath(remotePath) == true) {
             //we were in the requested directory or have successfully changed to it, so remotePath must be a directory
@@ -274,14 +273,11 @@ public class FtpClient {
                 //ensure localPath ends with a "/"
                 localPath = localPath + "/";
             }
-            if( new File(localPath + root).mkdir() ) {
-                System.out.println("Created new directory: " + localPath + "/" + root);
-            }
+            new File(localPath + root).mkdir();
             retrieveFileRecursive(".", localPath + root);
         } else {
             //remotePath is a file
             File localFile = new File(localPath + "/" + root);
-            System.out.println("In single-file get, localPath = " + localPath + "/" + root);
             OutputStream os = new FileOutputStream(localFile);
             if(remotePath.startsWith("/") == false) {
                 //handle relative path properly
@@ -301,22 +297,13 @@ public class FtpClient {
         //remotePath is what to get, localPath is the directory to put it in
         if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
             //directory change worked - remotePath is a directory, so we get multiple (recurse)
-            System.out.println("In directory recursion, remotePath = " + remotePath);
-            if( new File(localPath + "/" + remotePath).mkdirs() ) {
-                System.out.println("Created new directory: " + localPath + "/" + remotePath);
-            }
+            new File(localPath + "/" + remotePath).mkdirs();
             for( FTPFile file : ftpClient.listFiles() ) {
                 retrieveFileRecursive(file.getName(), localPath + "/" + remotePath);
             }
             ftpClient.changeWorkingDirectory("..");
         } else {
-            System.out.println("In recursive file get, localPath = " + localPath);
             File localFile = new File(localPath + "/" + remotePath);
-            if(!localFile.exists()) {
-                System.out.println("Creating local file: " + remotePath);
-            } else {
-                System.out.println("Updating local file: " + remotePath);
-            }
             OutputStream os = new FileOutputStream(localFile);
             if (ftpClient.retrieveFile("./" + remotePath, os) == false) {
                 //retrieveFileRecursive returns false if file is not found on remote server
