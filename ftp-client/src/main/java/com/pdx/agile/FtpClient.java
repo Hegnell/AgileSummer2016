@@ -6,9 +6,12 @@ import java.util.*;
 //import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
 //import com.sun.tools.javac.file.SymbolArchive;
 import org.apache.commons.net.*;
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.io.Util;
+import sun.net.ftp.FtpDirEntry;
 
 /**
  * FTP client.
@@ -18,6 +21,11 @@ public class FtpClient {
     private static FTPClient ftpClient;
     private static boolean debug = false;
 
+    private static String userName;
+    private static int port;
+    private static String serverName;
+    private static String password;
+
     public static void main( String[] args ) {
 
         for (String arg : args) {
@@ -26,10 +34,8 @@ public class FtpClient {
             }
         }
 
-        String username = null;
-        String password = null;
         Scanner scanner = new Scanner(System.in);
-        int port = 8821;
+        port = 8821;
 
         System.out.println("Welcome to our FTP client.\n");
 
@@ -43,7 +49,7 @@ public class FtpClient {
         } */
 
 
-        String serverName = "138.68.1.7";
+        serverName = "138.68.1.7";
         ftpClient = new FTPClient();
 
         System.out.println("Attempting to connect to server...");
@@ -76,9 +82,9 @@ public class FtpClient {
 
 
         // Just for testing purposes so you don't actually have to type this in every time.
-        username = "ftptestuser";
+        userName = "ftptestuser";
         password = "2016AgileTeam2";
-        keepGoing = loginToServer(username, password);
+        keepGoing = loginToServer(userName, password);
 
         try {
             while (keepGoing) {
@@ -145,7 +151,42 @@ public class FtpClient {
                     } else {
                         changeFilepermissions(userInput[1], userInput[2]);
                     }
+                } else if (firstArg.equals("cp")) {
+                    if (userInput.length != 3) {
+                        System.out.println("Incorrect number of arguments provided to cp.");
+                    } else {
 
+                        try {
+                            String path = ftpClient.printWorkingDirectory();
+                            if (copyDirectories(userInput[1], userInput[2])) {
+                                System.out.println("Copied directory successfully.");
+                                // Having tons of issue here, only way to get it working smoothly was to disconnect and
+                                // reconnect.
+                                ftpClient.disconnect();
+                                ftpClient.connect(serverName, port);
+                                ftpClient.login(userName, password);
+                                ftpClient.enterLocalPassiveMode();
+                                ftpClient.changeWorkingDirectory(path);
+                            } else {
+                                System.out.println("Unable to copy the directories.");
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                } else if (firstArg.equals("rm")) {
+                    if (userInput.length != 2) {
+                         System.out.println("Incorrect number of arguments provided to rm.");
+                    } else {
+                        try {
+                            if (removeDirectory(userInput[1], "")) {
+                                System.out.println("Removed directory successfully.");
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 } else if (firstArg.equals("quit")) {
                     if (confirm("disconnect and quit the application", scanner)) {
                         keepGoing = false;
@@ -268,7 +309,7 @@ public class FtpClient {
 
     // List files story.
     private static void listFiles() throws IOException {
-       FTPFile[] files = ftpClient.listFiles(".");
+       FTPFile[] files = ftpClient.listFiles();
 
        for (FTPFile file : files) {
            System.out.println(file.getRawListing());
@@ -329,6 +370,205 @@ public class FtpClient {
 
     }
 
+    // Helper function that returns the absolute path of a given file, taking the current working directory of the
+    // client into context.
+    private static String getAbsolutePath(String path) {
+        String ret = "";
+        try {
+            String old = ftpClient.printWorkingDirectory();
+            String[] pieces = path.split("/");
+
+            String newPath = "/";
+            for (int i = 1; i < pieces.length; i++) {
+                String p = pieces[i];
+                newPath += p + "/";
+            }
+            if (!newPath.equals("/")) {
+                ftpClient.changeWorkingDirectory(newPath);
+            }
+            ret = ftpClient.printWorkingDirectory() + "/" + pieces[pieces.length - 1];
+            ftpClient.changeWorkingDirectory(old);
+        } catch (IOException e) {
+            exitWithError("Failed to get absolute file path for: " + path, e, debug);
+        }
+        return ret;
+    }
+
+    private static boolean copyDirectories(String source, String dest) {
+        boolean success = false;
+
+        dest = getAbsolutePath(dest);
+        try {
+            success = ftpClient.makeDirectory(dest);
+
+            if (!success) {
+                System.out.println("Could not create the new directory.");
+                return success;
+            }
+
+            // Fire up a helper ftp client, useful for navigating through the directories smoothly.
+            FTPClient temp = new FTPClient();
+            temp.connect(serverName, port);
+            temp.login(userName, password);
+            ftpClient.changeWorkingDirectory(source);
+            temp.changeWorkingDirectory(dest);
+            temp.enterLocalPassiveMode();
+
+            String[] paths = dest.split("/");
+            String newDirectory = paths[paths.length-1];
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+
+            // Loop to go through the top most directory and make calls to copy each of those directories recursively.
+            FTPFile[] files = ftpClient.listFiles();
+            for (FTPFile file : files) {
+                if (!file.isDirectory()) {
+                    copyFile(file.getName(), temp.printWorkingDirectory());
+                } else {
+                    if (!file.getName().equals(newDirectory)) {
+
+                        success = copyDirectory(temp, dest + "/" + file.getName());
+                        ftpClient.changeWorkingDirectory("../");
+                        temp.changeWorkingDirectory("../");
+                    }
+                }
+            }
+            temp.logout();
+            temp.disconnect();
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to copy the remote directory.", e, debug);
+        }
+
+        return success;
+    }
+
+
+    private static boolean copyDirectory(FTPClient temp, String path) {
+        boolean success = false;
+        try {
+            success = ftpClient.makeDirectory(path);
+
+            if (!success) {
+                System.out.println("Could not create the new directory.");
+                return success;
+            }
+
+            //
+            String[] paths = path.split("/");
+            String newDirectory = paths[paths.length-1];
+            ftpClient.changeWorkingDirectory(newDirectory);
+            temp.changeWorkingDirectory(newDirectory);
+
+            // Go through the files in the directory and either copy them if they are a file, or recursively call this
+            // function again if it's a directory.
+            FTPFile[] files = ftpClient.listFiles();
+            for (FTPFile file : files) {
+                if (!file.isDirectory()) {
+                    copyFile(file.getName(), temp.printWorkingDirectory());
+                } else {
+                    if (!file.getName().equals(newDirectory)) {
+                        copyDirectory(temp, path + "/" + file.getName());
+                        ftpClient.changeWorkingDirectory("../");
+                        temp.changeWorkingDirectory("../");
+                    }
+                }
+            }
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to copy the remote directory.", e, debug);
+        }
+
+        return success;
+    }
+
+    // Function to copy a single file on the server to another destination on the server.
+    private static boolean copyFile(String file, String destPath) throws IOException {
+        // Create new FTPClient for transfer.
+        FTPClient dest = new FTPClient();
+        dest.connect(serverName, port);
+        dest.login(userName, password);
+        dest.enterLocalPassiveMode();
+
+        // Set up input and output streams on clients.
+        dest.changeWorkingDirectory(destPath);
+        dest.setFileType(FTP.BINARY_FILE_TYPE);
+        InputStream inputStream = ftpClient.retrieveFileStream(file);
+        OutputStream outputStream = dest.storeFileStream(file);
+
+        // Performs the copy, and shut down temporary client.
+        outputStream.flush();
+        inputStream.close();
+        outputStream.close();
+
+        boolean success = ftpClient.completePendingCommand();
+
+        dest.logout();
+        dest.disconnect();
+        return success;
+    }
+
+    // Function to remove an entire directory recursively on the server.
+    private static boolean removeDirectory(String currentPath, String directory) throws IOException {
+        boolean success = false;
+
+        String path;
+        // Determine the path of the directory to be listed.
+        if (!directory.equals("")) {
+            path = currentPath + "/" + directory;
+        } else {
+            path = currentPath;
+        }
+
+        FTPFile[] files = ftpClient.listFiles(path);
+
+        for (FTPFile file : files) {
+            String fileName = file.getName();
+
+            String filePath;
+            // Append current directory before the filename, unless we are at the top directory.
+            if (directory.equals("")) {
+                filePath = currentPath + "/" + fileName;
+            } else {
+                filePath = currentPath + "/" + directory + "/" + fileName;
+            }
+
+            // If it's a directory, call function again with new directory.
+            if (file.isDirectory()) {
+                removeDirectory(path, fileName);
+            } else {
+                // Otherwise it's a file, so delte it.
+                boolean deleted = ftpClient.deleteFile(filePath);
+                if (deleted) {
+                    System.out.println("Successfully removed the file: " + filePath);
+                } else {
+                    System.out.println("Unable to remove the file: " + filePath);
+                }
+            }
+        }
+
+        // After all the files have been deleted, try and delete the directory itself.
+        try {
+            success = ftpClient.removeDirectory(path);
+            if (success) {
+                System.out.println("Successfully removed directory: " + path);
+            } else {
+                System.out.println("Unable to remove directory: " + path);
+            }
+
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to change to remote directory.", e, debug);
+        }
+
+        return success;
+    }
+
+
     private static boolean validPermissions(String permissions) {
         return permissions.matches("[0-7][0-7][0-7]");
     }
@@ -347,6 +587,8 @@ public class FtpClient {
         System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
+        System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
+        System.out.println("rm <path>\t\t\t Remove a directory on the server.");
         System.out.println("help\t\t\t\t Get available commands.");
         System.out.println("quit\t\t\t\t Exit the program.");
     }
