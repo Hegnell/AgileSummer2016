@@ -3,8 +3,8 @@ package com.pdx.agile;
 import java.io.*;
 import java.util.*;
 
-import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
-import com.sun.tools.javac.file.SymbolArchive;
+//import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
+//import com.sun.tools.javac.file.SymbolArchive;
 import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
@@ -111,6 +111,13 @@ public class FtpClient {
                     } else {
                         mkdirRemoteServer(userInput[1]);
                     }
+                } else if (firstArg.equals("rm")) {
+                    if (userInput.length != 2) {
+                        System.out.println("rm: and absolute or relative path is required argument\n");
+                        printHelp();
+                    } else {
+                        rmRemoteServer(userInput[1]);
+                    }
                 } else if (firstArg.equals("cd")) {
                     if (userInput.length != 2) {
                         System.out.println("Incorrect arguments specified to cd. Type \"help\" for usage.\n");
@@ -168,9 +175,9 @@ public class FtpClient {
                         }
 
                     }
-                } else if (firstArg.equals("rm")) {
+                } else if (firstArg.equals("rmdir")) {
                     if (userInput.length != 2) {
-                         System.out.println("Incorrect number of arguments provided to rm.");
+                         System.out.println("Incorrect number of arguments provided to rmdir.");
                     } else {
                         try {
                             if (removeDirectory(userInput[1], "")) {
@@ -181,7 +188,9 @@ public class FtpClient {
                         }
                     }
                 } else if (firstArg.equals("quit")) {
-                    keepGoing = false;
+                    if (confirm("disconnect and quit the application", scanner)) {
+                        keepGoing = false;
+                    }
                 } else if (firstArg.equals("help")) {
                     printHelp();
                 } else {
@@ -251,6 +260,26 @@ public class FtpClient {
             exitWithError("The FTP server has closed the connection.", e, debug);
         } catch (IOException e) {
             exitWithError("An I/O error occurred when attempting to create the remote directory.", e, debug);
+        }
+
+        return  success;
+    }
+
+    private static boolean rmRemoteServer(String rmPath) {
+        boolean success = false;
+
+        try {
+            success = ftpClient.deleteFile(rmPath);
+
+            if (!success) {
+                System.out.println("Could not delete file " + rmPath + " on remote server. Do you have the correct permission?");
+            } else {
+                System.out.println("Successfully removed file " + rmPath);
+            }
+        } catch (FTPConnectionClosedException e) {
+            exitWithError("The FTP server has closed the connection.", e, debug);
+        } catch (IOException e) {
+            exitWithError("An I/O error occurred when attempting to remove file from the remote directory.", e, debug);
         }
 
         return  success;
@@ -553,12 +582,13 @@ public class FtpClient {
         System.out.println("ls\t\t\t\t\t List files in current directory.");
         System.out.println("pwd\t\t\t\t\t Show current working directory.");
         System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("rm <path>\t\t Remove a file from the remote server.");
         System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
         System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
         System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
-        System.out.println("rm <path>\t\t\t Remove a directory on the server.");
+        System.out.println("rmdir <path>\t\t\t Remove a directory on the server.");
         System.out.println("help\t\t\t\t Get available commands.");
         System.out.println("quit\t\t\t\t Exit the program.");
     }
