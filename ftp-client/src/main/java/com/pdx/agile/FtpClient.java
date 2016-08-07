@@ -687,22 +687,28 @@ public class FtpClient {
     }
 
     private static void printHelp() {
-        System.out.println("This is a help section, this is where commands and usage info will go.");
-        System.out.println("ls\t\t\t\t\t List files in current directory.");
-        System.out.println("lls\t\t\t\t List local directories or files in the given path.");
-        System.out.println("pwd\t\t\t\t\t Show current working directory.");
-        System.out.println("lpwd\t\t\t\t Show current working local directory.");
-        System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
-        System.out.println("rm <path>\t\t Remove a file from the remote server.");
-        System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
-        System.out.println("lcd <path>\t\t\t Change the current local directory.");
-        System.out.println("get <rpath> <lpath>\t\t\t Download the remote file or directory at rpath to local folder lpath.");
-        System.out.println("put <file>\t\t\t Upload the file to the remote server.");
-        System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
-        System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
-        System.out.println("rmdir <path>\t\t\t Remove a directory on the server.");
-        System.out.println("help\t\t\t\t Get available commands.");
-        System.out.println("quit\t\t\t\t Exit the program.");
+        System.out.println("Need some help? Here are the supported FTP client commands:");
+
+        System.out.println("\nNavigating and getting around:");
+        System.out.println("\tls\t\t\t\t\t List directories or files in current remote directory.");
+        System.out.println("\tlls\t\t\t\t\t List local directories or files in the current local path.");
+        System.out.println("\tpwd\t\t\t\t\t Show current working remote directory.");
+        System.out.println("\tlpwd\t\t\t\t Show current working local directory.");
+        System.out.println("\tcd <path>\t\t\t Change the current remote working directory.");
+        System.out.println("\tlcd <path>\t\t\t Change the current local working directory.");
+
+        System.out.println("\nSending, receiving, and changing files on the remote server:");
+        System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at rpath to local folder lpath.");
+        System.out.println("\tput <file>\t\t\t Upload a file to the remote server.");
+        System.out.println("\tcp <source> <dest>\t Copy source directory or file to destination another location on the remote server");
+        System.out.println("\tchmod <perm> <file>\t Change permissions on specified file.");
+        System.out.println("\trm <path>\t\t\t Remove a single file on the remote server.");
+        System.out.println("\tmkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("\trmdir <path>\t\t Remove a directory on the remote server.");
+
+        System.out.println("\nOther commands:");
+        System.out.println("\thelp\t\t\t\t Show this list of commands.");
+        System.out.println("\tquit\t\t\t\t Disconnect and exit the program.");
     }
 
     private static void exitWithError(String error, Exception e, boolean debug) {
