@@ -98,11 +98,23 @@ public class FtpClient {
                     } catch (IOException e) {
                         exitWithError("Was unable to get the path on the server.", e, debug);
                     }
+                } else if (firstArg.equals("lpwd")) {
+                    try{
+                        showLocalPath();
+                    } catch (IOException e){
+                        exitWithError("Unable to get the local path.", e, debug);
+                    }
                 } else if (firstArg.equals("ls")) {
                     try {
                         listFiles();
                     } catch (IOException e) {
                         exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                    }
+                } else if (firstArg.equals("lls")) {
+                    try{
+                        listLocalFiles();
+                    } catch(IOException e){
+                        exitWithError("Unable to list local directories or files.", e, debug);
                     }
                 } else if (firstArg.equals("mkdir")) {
                     if (userInput.length != 2) {
@@ -124,16 +136,25 @@ public class FtpClient {
                     } else {
                         chdirRemoteServer(userInput[1]);
                     }
+                } else if (firstArg.equals("lcd")) {
+                    try{
+                        if(userInput[1] != null && !userInput[1].equals("")){
+                            changeLocalDir(userInput[1]);
+                        }
+                    } catch (IOException e){
+                        exitWithError("Unable to change local directory", e, debug);
+                    }
                 } else if (firstArg.equals("get")) {
                     try {
-                        String path = userInput[1];
+                        String remotePath = userInput[1];
+                        String localPath = userInput[2];
                         try {
-                            retrieveFile(path);
+                            retrieveFile(remotePath, localPath);
                         } catch (IOException e) {
                             exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        System.out.println("get requires a filepath");
+                        System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("put")) {
                     if (userInput.length != 2) {
@@ -307,6 +328,12 @@ public class FtpClient {
         System.out.println(ftpClient.printWorkingDirectory());
     }
 
+    // display current working local directory
+    private static void showLocalPath() throws IOException {
+        String currentDir = System.getProperty("user.dir");
+        System.out.println(currentDir);
+    }
+
     // List files story.
     private static void listFiles() throws IOException {
        FTPFile[] files = ftpClient.listFiles();
@@ -316,16 +343,98 @@ public class FtpClient {
        }
     }
 
-    // Retrieve a file from the server and save it locally.
-    private static void retrieveFile(String path) throws IOException {
-        String localPath = path;
-        File localFile = new File(localPath);
-        OutputStream os = new FileOutputStream(localFile);
-        if (!ftpClient.retrieveFile("./" + path, os)) {
-            //retrieveFile returns false if file is not found on remote server.
-            localFile.delete();
+    private static void retrieveFile(String remotePath, String localPath) throws IOException {
+        String previousWorkingDirectory = ftpClient.printWorkingDirectory();
+        String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
+        if (ftpClient.printWorkingDirectory().equals(remotePath) ||
+                goToPath(remotePath) == true) {
+            //we were in the requested directory or have successfully changed to it, so remotePath must be a directory
+            if(localPath.endsWith("/") == false) {
+                //ensure localPath ends with a "/"
+                localPath = localPath + "/";
+            }
+            new File(localPath + root).mkdir();
+            retrieveFileRecursive(".", localPath + root);
+        } else {
+            //remotePath is a file
+            File localFile = new File(localPath + "/" + root);
+            OutputStream os = new FileOutputStream(localFile);
+            if(remotePath.startsWith("/") == false) {
+                //handle relative path properly
+                remotePath = "./" + remotePath;
+            }
+            if (ftpClient.retrieveFile(remotePath, os) == false) {
+                System.out.println("File \"" + ftpClient.printWorkingDirectory() + "/" + remotePath + "\" not found on remote server");
+                localFile.delete();
+            }
+            os.close();
         }
-        os.close();
+        ftpClient.changeWorkingDirectory(previousWorkingDirectory);
+    }
+    public static String getFilenameFromPath(String path) {
+        int lastSlash = path.lastIndexOf("/");
+        if(lastSlash == path.length()) {
+            path = path.substring(0, path.length() - 1);
+            lastSlash = path.lastIndexOf("/");
+        }
+        return path.substring(lastSlash + 1, path.length());
+    }
+
+    private static boolean goToPath(String remotePath) throws IOException {
+        if(remotePath.startsWith("/")){
+            return ftpClient.changeWorkingDirectory(remotePath);
+        } else {
+            return ftpClient.changeWorkingDirectory("./" + remotePath);
+        }
+    }
+
+    //Retrieve a directory structure recursively.
+    private static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
+        //remotePath is what to get, localPath is the directory to put it in
+        if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
+            //directory change worked - remotePath is a directory, so we get multiple (recurse)
+            new File(localPath + "/" + remotePath).mkdirs();
+            for( FTPFile file : ftpClient.listFiles() ) {
+                retrieveFileRecursive(file.getName(), localPath + "/" + remotePath);
+            }
+            ftpClient.changeWorkingDirectory("..");
+        } else {
+            File localFile = new File(localPath + "/" + remotePath);
+            OutputStream os = new FileOutputStream(localFile);
+            if (ftpClient.retrieveFile("./" + remotePath, os) == false) {
+                //retrieveFileRecursive returns false if file is not found on remote server
+                System.out.println("File \"" + ftpClient.printWorkingDirectory() + "/" + remotePath + "\" not found on remote server");
+                localFile.delete();
+            }
+            os.close();
+        }
+    }
+
+
+    // List local directories and files
+    private static void listLocalFiles() throws IOException {
+        // set the current working directory
+        String currentDir = System.getProperty("user.dir");
+
+        File directory = new File(currentDir);
+        File[] fList = directory.listFiles();
+
+        for (File file : fList){
+            System.out.println(file.getName());
+        }
+    }
+
+    // Change local directory
+    private static boolean changeLocalDir(String localDirectory) throws IOException {
+        boolean success = false;
+        File directory;
+
+        directory = new File(localDirectory).getAbsoluteFile();
+        if(directory.exists() || directory.mkdir()){
+            success = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
+        }
+
+        return success;
     }
 
     // Upload files onto the server
@@ -580,11 +689,14 @@ public class FtpClient {
     private static void printHelp() {
         System.out.println("This is a help section, this is where commands and usage info will go.");
         System.out.println("ls\t\t\t\t\t List files in current directory.");
+        System.out.println("lls\t\t\t\t List local directories or files in the given path.");
         System.out.println("pwd\t\t\t\t\t Show current working directory.");
+        System.out.println("lpwd\t\t\t\t Show current working local directory.");
         System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
         System.out.println("rm <path>\t\t Remove a file from the remote server.");
         System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
-        System.out.println("get <path>\t\t\t Download the file at the given path on the server.");
+        System.out.println("lcd <path>\t\t\t Change the current local directory.");
+        System.out.println("get <rpath> <lpath>\t\t\t Download the remote file or directory at rpath to local folder lpath.");
         System.out.println("put <file>\t\t\t Upload the file to the remote server.");
         System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
         System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
