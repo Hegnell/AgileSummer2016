@@ -151,20 +151,25 @@ public class FtpClient {
                         try {
                             retrieveFile(remotePath, localPath);
                         } catch (IOException e) {
-                            exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
+                            exitWithError("Was unable to retrieve the specified file or directory - " + e.getMessage(), e, debug);
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
                         System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("put")) {
-                    if (userInput.length != 2) {
-                        System.out.println("No file was specified.");
-                    } else {
+                    try {
+                        String localPath = userInput[1];
+                        String remotePath = userInput[2];
                         try {
-                            sendFiles(userInput[1]);
+                            System.out.println("Got this for local: " + localPath);
+                            System.out.println("Got this for remote:" + remotePath);
+
+                            sendFiles(localPath, remotePath);
                         } catch (IOException e) {
-                            exitWithError("Unable to upload the file onto the server.", e, debug);
+                            exitWithError("Was unable to send the specified file or directory - " + e.getMessage(), e, debug);
                         }
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("chmod")) {
                     if (userInput.length != 3) {
@@ -438,32 +443,46 @@ public class FtpClient {
     }
 
     // Upload files onto the server
-    private static void sendFiles(String fileToFTP) throws IOException {
-        Scanner scanner = new Scanner(System.in);
-        // specify local directory
-        String localDirectory = readUserInput(scanner, "Please enter your local directory: ");
+    private static void sendFiles(String remotePath, String localPath) throws IOException {
 
-        // specify remote directory
-        String remoteDirectory = readUserInput(scanner, "Please enter the remote directory: ");
+        //Save the current PWD for remote and local and restore it when we are done
+        String previousRemoteWorkingDirectory = ftpClient.printWorkingDirectory();
+        String previousLocalWorkingDirectory = System.getProperty("user.dir");
 
-        // change working dirctory to the specifed remote directory
-        ftpClient.changeWorkingDirectory(remoteDirectory);
+        // try to change working directory to the specified remote directory
+        if(!chdirRemoteServer(remotePath)) {
+            System.out.println("Could not find specified remote path: " + remotePath);
+        }
+
+        // try to change local directory to the specified local directory
+        //if()
+
         System.out.println("Current directory is " + ftpClient.printWorkingDirectory());
+
+        /*
+
         InputStream input;
-        input = new FileInputStream(localDirectory + "/" + fileToFTP);
+        input = new FileInputStream( + "/" + localPath);
+
 
         // store the file in the remote server
-        if (ftpClient.storeFile(fileToFTP, input)) {
+        if (ftpClient.storeFile(localPath, input)) {
             // if successful, print the following line
-            System.out.println(fileToFTP + " uploaded successfully");
+            System.out.println(localPath + " uploaded successfully");
         } else {
             // might be failed at this point
             System.out.println("Upload failed.");
         }
 
         // close the stream
-        scanner.close();
         input.close();
+
+        */
+
+        // return to the previous working directory
+        chdirRemoteServer(previousRemoteWorkingDirectory);
+        changeLocalDir(previousLocalWorkingDirectory);
+
     }
 
     private static void changeFilepermissions(String permissions, String file) {
@@ -698,8 +717,8 @@ public class FtpClient {
         System.out.println("\tlcd <path>\t\t\t Change the current local working directory.");
 
         System.out.println("\nSending, receiving, and changing files on the remote server:");
-        System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at rpath to local folder lpath.");
-        System.out.println("\tput <file>\t\t\t Upload a file to the remote server.");
+        System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at <rpath> to local folder <lpath>.");
+        System.out.println("\tput <lpath> <rpath>\t Upload a local file or directory at <lpath> to the remote server at <rpath>.");
         System.out.println("\tcp <source> <dest>\t Copy source directory or file to destination another location on the remote server");
         System.out.println("\tchmod <perm> <file>\t Change permissions on specified file.");
         System.out.println("\trm <path>\t\t\t Remove a single file on the remote server.");
