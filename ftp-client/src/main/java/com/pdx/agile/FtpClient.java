@@ -169,7 +169,7 @@ public class FtpClient {
                             exitWithError("Was unable to send the specified file or directory - " + e.getMessage(), e, debug);
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
+                        System.out.println("Incorrect arguments specified to put. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("chmod")) {
                     if (userInput.length != 3) {
@@ -442,22 +442,44 @@ public class FtpClient {
         return success;
     }
 
-    // Upload files onto the server
-    private static void sendFiles(String remotePath, String localPath) throws IOException {
+    // Upload file or directory onto the server
+    private static void sendFiles(String localPath, String remotePath) throws IOException {
 
-        //Save the current PWD for remote and local and restore it when we are done
+        File localFileObj;
+
+        //Save the current PWD for remote and restore it when we are done
         String previousRemoteWorkingDirectory = ftpClient.printWorkingDirectory();
-        String previousLocalWorkingDirectory = System.getProperty("user.dir");
 
-        // try to change working directory to the specified remote directory
-        if(!chdirRemoteServer(remotePath)) {
-            System.out.println("Could not find specified remote path: " + remotePath);
+        //determine if localPath is a file or directory
+        try {
+            localFileObj = new File(localPath);
+        } catch(NullPointerException e) {
+            System.out.println("Could not find a file or directory for specified local path: " + localPath);
+            return;
         }
 
-        // try to change local directory to the specified local directory
-        //if()
+        //check if local is a directory
+        if(localFileObj.isDirectory()) {
 
-        System.out.println("Current directory is " + ftpClient.printWorkingDirectory());
+            // try to change working directory to the specified remote directory
+            if(!chdirRemoteServer(remotePath)) {
+                System.out.println("Could not find specified remote path: " + remotePath);
+                return;
+            }
+
+            //local and remote directories are good, start copying.
+            System.out.println("Current remote directory is " + ftpClient.printWorkingDirectory());
+            System.out.println("Current local directory is " + localFileObj.toString());
+
+
+        } else if(localFileObj.isFile()) {
+
+            //else we simply read the desired local file and send it to the remote server
+            System.out.println("Local path is indeed a file, file upload code goes here");
+
+
+        }
+
 
         /*
 
@@ -481,7 +503,6 @@ public class FtpClient {
 
         // return to the previous working directory
         chdirRemoteServer(previousRemoteWorkingDirectory);
-        changeLocalDir(previousLocalWorkingDirectory);
 
     }
 
