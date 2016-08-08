@@ -376,6 +376,8 @@ public class FtpClient {
         }
         ftpClient.changeWorkingDirectory(previousWorkingDirectory);
     }
+
+    //helper function to strip off the file name from a relative path
     public static String getFilenameFromPath(String path) {
         int lastSlash = path.lastIndexOf("/");
         if(lastSlash == path.length()) {
@@ -386,9 +388,16 @@ public class FtpClient {
     }
 
 
+    //helper function to strip the file name off of a path if supplied
     public static String getPathOnly(String path) {
         int lastSlash = path.lastIndexOf("/");
-        return path.substring(0, lastSlash);
+        if (lastSlash == -1) {
+            //there is no path!
+            return "";
+        } else {
+            return path.substring(0, lastSlash);
+        }
+
     }
 
 
@@ -449,6 +458,29 @@ public class FtpClient {
         return success;
     }
 
+    //Create and store local files recursively
+    private static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
+        //remotePath is what to get, localPath is the directory to put it in
+        if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
+            //directory change worked - remotePath is a directory, so we get multiple (recurse)
+            new File(localPath + "/" + remotePath).mkdirs();
+            for( FTPFile file : ftpClient.listFiles() ) {
+                retrieveFileRecursive(file.getName(), localPath + "/" + remotePath);
+            }
+            ftpClient.changeWorkingDirectory("..");
+        } else {
+            File localFile = new File(localPath + "/" + remotePath);
+            OutputStream os = new FileOutputStream(localFile);
+            if (ftpClient.retrieveFile("./" + remotePath, os) == false) {
+                //retrieveFileRecursive returns false if file is not found on remote server
+                System.out.println("File \"" + ftpClient.printWorkingDirectory() + "/" + remotePath + "\" not found on remote server");
+                localFile.delete();
+            }
+            os.close();
+        }
+    }
+
+
     // Upload file or directory onto the server
     private static void sendFiles(String localPath, String remotePath) throws IOException {
 
@@ -463,7 +495,8 @@ public class FtpClient {
 
             //let's check to see if their path is legit
             if(!localFileObj.exists()) {
-                //might have tried to use a relative path
+
+                //they might have tried to use a relative path
                 localFileObj = new File(System.getProperty("user.dir") + localPath);
 
                  if(!localFileObj.exists()) {
@@ -477,8 +510,6 @@ public class FtpClient {
             return;
         }
 
-
-
         //check if local is a directory
         if(localFileObj.isDirectory()) {
 
@@ -488,9 +519,11 @@ public class FtpClient {
                 return;
             }
 
-            //local and remote directories are good, start copying.
             System.out.println("Current remote directory is " + ftpClient.printWorkingDirectory());
             System.out.println("Current local directory is " + localFileObj.toString());
+            //local and remote directories are good, start copying.
+
+
 
 
         } else if(localFileObj.isFile()) {
