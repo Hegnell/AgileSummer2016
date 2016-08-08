@@ -385,6 +385,13 @@ public class FtpClient {
         return path.substring(lastSlash + 1, path.length());
     }
 
+
+    public static String getPathOnly(String path) {
+        int lastSlash = path.lastIndexOf("/");
+        return path.substring(0, lastSlash);
+    }
+
+
     private static boolean goToPath(String remotePath) throws IOException {
         if(remotePath.startsWith("/")){
             return ftpClient.changeWorkingDirectory(remotePath);
@@ -453,10 +460,24 @@ public class FtpClient {
         //determine if localPath is a file or directory
         try {
             localFileObj = new File(localPath);
+
+            //let's check to see if their path is legit
+            if(!localFileObj.exists()) {
+                //might have tried to use a relative path
+                localFileObj = new File(System.getProperty("user.dir") + localPath);
+
+                 if(!localFileObj.exists()) {
+                     System.out.println("The specified file or directory does not exist: " + localPath);
+                     return;
+                 }
+            }
+
         } catch(NullPointerException e) {
             System.out.println("Could not find a file or directory for specified local path: " + localPath);
             return;
         }
+
+
 
         //check if local is a directory
         if(localFileObj.isDirectory()) {
@@ -474,32 +495,35 @@ public class FtpClient {
 
         } else if(localFileObj.isFile()) {
 
-            //else we simply read the desired local file and send it to the remote server
-            System.out.println("Local path is indeed a file, file upload code goes here");
+            //If they supplied a path with a filename, strip the file name, regardless try to change to working directory
+            chdirRemoteServer(getPathOnly(remotePath));
 
+            //ensure the remote path is a file and write able
+            String remoteFileName = getFilenameFromPath(remotePath);
+
+            //Check to make sure it's actually a file name for remote. Otherwise try just creating
+            if(remoteFileName.length() == 0) {
+                System.out.println("A directory path was supplied for remote file. Using local file name for remote file.");
+                remoteFileName = localFileObj.getName();
+            }
+
+            InputStream input;
+            input = new FileInputStream(localFileObj.getAbsoluteFile());
+            System.out.println(localFileObj.getAbsoluteFile());
+
+            // store the file in the remote server
+            if (ftpClient.storeFile(remoteFileName, input)) {
+                // if successful, print the following line
+                System.out.println(localPath + " uploaded successfully to: " + remoteFileName);
+            } else {
+                // might be failed at this point
+                System.out.println("Upload failed. Are you able to write to the remote location?");
+            }
+
+            // close the stream
+            input.close();
 
         }
-
-
-        /*
-
-        InputStream input;
-        input = new FileInputStream( + "/" + localPath);
-
-
-        // store the file in the remote server
-        if (ftpClient.storeFile(localPath, input)) {
-            // if successful, print the following line
-            System.out.println(localPath + " uploaded successfully");
-        } else {
-            // might be failed at this point
-            System.out.println("Upload failed.");
-        }
-
-        // close the stream
-        input.close();
-
-        */
 
         // return to the previous working directory
         chdirRemoteServer(previousRemoteWorkingDirectory);
