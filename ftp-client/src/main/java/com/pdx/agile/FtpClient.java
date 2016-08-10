@@ -151,20 +151,22 @@ public class FtpClient {
                         try {
                             retrieveFile(remotePath, localPath);
                         } catch (IOException e) {
-                            exitWithError("Was unable to retrieve the file - " + e.getMessage(), e, debug);
+			    System.out.println("Unable to retrieve the specified file or directory to remote server.");
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
                         System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("put")) {
-                    if (userInput.length != 2) {
-                        System.out.println("No file was specified.");
-                    } else {
+                    try {
+                        String localPath = userInput[1];
+                        String remotePath = userInput[2];
                         try {
-                            sendFiles(userInput[1]);
+                            sendFiles(localPath, remotePath);
                         } catch (IOException e) {
-                            exitWithError("Unable to upload the file onto the server.", e, debug);
+			    System.out.println("Unable to send the specified file or directory to remote server.");
                         }
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        System.out.println("Incorrect arguments specified to put. Type \"help\" for usage.\n");
                     }
                 } else if (firstArg.equals("chmod")) {
                     if (userInput.length != 3) {
@@ -371,6 +373,8 @@ public class FtpClient {
         }
         ftpClient.changeWorkingDirectory(previousWorkingDirectory);
     }
+
+    //helper function to strip off the file name from a relative path
     public static String getFilenameFromPath(String path) {
         int lastSlash = path.lastIndexOf("/");
         if(lastSlash == path.length()) {
@@ -379,6 +383,20 @@ public class FtpClient {
         }
         return path.substring(lastSlash + 1, path.length());
     }
+
+
+    //helper function to strip the file name off of a path if supplied
+    public static String getPathOnly(String path) {
+        int lastSlash = path.lastIndexOf("/");
+        if (lastSlash == -1) {
+            //there is no path!
+            return "";
+        } else {
+            return path.substring(0, lastSlash);
+        }
+
+    }
+
 
     private static boolean goToPath(String remotePath) throws IOException {
         if(remotePath.startsWith("/")){
@@ -437,33 +455,113 @@ public class FtpClient {
         return success;
     }
 
-    // Upload files onto the server
-    private static void sendFiles(String fileToFTP) throws IOException {
-        Scanner scanner = new Scanner(System.in);
-        // specify local directory
-        String localDirectory = readUserInput(scanner, "Please enter your local directory: ");
+    //Create and store local files recursively on remote server
+    private static void sendFileRecursive(File localFileObj) throws IOException {
+        //localPath is what to get, remotePath is the directory to put it in
+        if (localFileObj.isDirectory()) {
+            if (ftpClient.changeWorkingDirectory( "./" + localFileObj.getPath())) {
+                //directory change worked - localPath was already created on remote server
+                File[] fList = localFileObj.listFiles();
+                for( File localFileList : localFileObj.listFiles() ) {
+                    sendFileRecursive(localFileList);
+                }
+            } else {
+                // Directory hasn't been created
+                if(ftpClient.makeDirectory(localFileObj.getName())) {
+			System.out.println("Created remote directory: " + ftpClient.printWorkingDirectory() + "/" +  localFileObj.getName());
+		} else {
+			System.out.println("Could not create remote directory: " + ftpClient.printWorkingDirectory() + "/" + localFileObj.getName());
+		}
+                ftpClient.changeWorkingDirectory("./" + localFileObj.getName());
+                File[] fList = localFileObj.listFiles();
+                for( File localFileList : localFileObj.listFiles() ) {
+                    sendFileRecursive(localFileList);
+                }
 
-        // specify remote directory
-        String remoteDirectory = readUserInput(scanner, "Please enter the remote directory: ");
-
-        // change working dirctory to the specifed remote directory
-        ftpClient.changeWorkingDirectory(remoteDirectory);
-        System.out.println("Current directory is " + ftpClient.printWorkingDirectory());
-        InputStream input;
-        input = new FileInputStream(localDirectory + "/" + fileToFTP);
-
-        // store the file in the remote server
-        if (ftpClient.storeFile(fileToFTP, input)) {
-            // if successful, print the following line
-            System.out.println(fileToFTP + " uploaded successfully");
+            }
+            ftpClient.changeWorkingDirectory("..");
+        } else if(localFileObj.isFile()) {
+            InputStream input;
+            input = new FileInputStream(localFileObj.getAbsoluteFile());
+            // store the file in the remote server
+            if (ftpClient.storeFile(localFileObj.getName(), input)) {
+                System.out.println(localFileObj.getName() + " uploaded successfully to: " + ftpClient.printWorkingDirectory() + localFileObj.getName());
+            } else {
+                // might have failed but unlikely
+                System.out.println("could not create " + localFileObj.getName() + "Are you able to write to the remote location?");
+            }
+            input.close();
         } else {
-            // might be failed at this point
-            System.out.println("Upload failed.");
+            System.out.println("Could not access (permissions?): " + localFileObj.getAbsoluteFile());
         }
 
-        // close the stream
-        scanner.close();
-        input.close();
+    }
+
+
+    // Upload file or directory onto the server
+    private static void sendFiles(String localPath, String remotePath) throws IOException {
+        File localFileObj;
+        //Save the current PWD for remote and restore it when we are done
+        String previousRemoteWorkingDirectory = ftpClient.printWorkingDirectory();
+        //determine if localPath is a file or directory
+        try {
+            localFileObj = new File(localPath);
+            //let's check to see if their path is legit
+            if(!localFileObj.exists()) {
+                //they might have tried to use a relative path
+                localFileObj = new File(System.getProperty("user.dir") + localPath);
+                 if(!localFileObj.exists()) {
+                     System.out.println("The specified file or directory does not exist: " + localPath);
+                     return;
+                 }
+            }
+
+        } catch(NullPointerException e) {
+            System.out.println("Could not find a file or directory for specified local path: " + localPath);
+            return;
+        }
+        //check if local is a directory
+        if(localFileObj.isDirectory()) {
+            // try to change working directory to the specified remote directory
+            if(!chdirRemoteServer(remotePath)) {
+                System.out.println("Could not find specified remote path: " + remotePath);
+                return;
+            }
+            
+            // if "./" is used for current local directory, this needs to be sanitized a bit
+            if(localFileObj.getName().equals(".")) {
+               localFileObj = new File(System.getProperty("user.dir"));
+            }
+
+	    //local and remote directories are good, start copying.
+            sendFileRecursive(localFileObj);
+
+        } else if(localFileObj.isFile()) {
+            //If they supplied a path with a filename, strip the file name, regardless try to change to working directory
+            chdirRemoteServer(getPathOnly(remotePath));
+            //ensure the remote path is a file and write able
+            String remoteFileName = getFilenameFromPath(remotePath);
+            //Check to make sure it's actually a file name for remote. Otherwise try just creating
+            if(remoteFileName.length() == 0) {
+                System.out.println("A directory path was supplied. Using local file name for remote file name.");
+                remoteFileName = localFileObj.getName();
+            }
+            InputStream input;
+            input = new FileInputStream(localFileObj.getAbsoluteFile());
+            System.out.println(localFileObj.getAbsoluteFile());
+            // store the file in the remote server
+            if (ftpClient.storeFile(remoteFileName, input)) {
+                // if successful, print the following line
+                System.out.println(localPath + " uploaded successfully to: " + remoteFileName);
+            } else {
+                // might be failed at this point
+                System.out.println("Upload failed. Are you able to write to the remote location?");
+            }
+            // close the stream
+            input.close();
+        }
+        // return to the previous working directory
+        chdirRemoteServer(previousRemoteWorkingDirectory);
     }
 
     private static void changeFilepermissions(String permissions, String file) {
@@ -687,22 +785,28 @@ public class FtpClient {
     }
 
     private static void printHelp() {
-        System.out.println("This is a help section, this is where commands and usage info will go.");
-        System.out.println("ls\t\t\t\t\t List files in current directory.");
-        System.out.println("lls\t\t\t\t List local directories or files in the given path.");
-        System.out.println("pwd\t\t\t\t\t Show current working directory.");
-        System.out.println("lpwd\t\t\t\t Show current working local directory.");
-        System.out.println("mkdir <path>\t\t Create a directory on the remote server.");
-        System.out.println("rm <path>\t\t Remove a file from the remote server.");
-        System.out.println("cd <path>\t\t\t Change the current working directory on the remote server.");
-        System.out.println("lcd <path>\t\t\t Change the current local directory.");
-        System.out.println("get <rpath> <lpath>\t\t\t Download the remote file or directory at rpath to local folder lpath.");
-        System.out.println("put <file>\t\t\t Upload the file to the remote server.");
-        System.out.println("chmod <perm> <file> \t\t Change permissions on specified file.");
-        System.out.println("cp <source> <dest>\t\t\t Copy source directory or file to destination");
-        System.out.println("rmdir <path>\t\t\t Remove a directory on the server.");
-        System.out.println("help\t\t\t\t Get available commands.");
-        System.out.println("quit\t\t\t\t Exit the program.");
+        System.out.println("Need some help? Here are the supported FTP client commands:");
+
+        System.out.println("\nNavigating and getting around:");
+        System.out.println("\tls\t\t\t\t\t List directories or files in current remote directory.");
+        System.out.println("\tlls\t\t\t\t\t List local directories or files in the current local path.");
+        System.out.println("\tpwd\t\t\t\t\t Show current working remote directory.");
+        System.out.println("\tlpwd\t\t\t\t Show current working local directory.");
+        System.out.println("\tcd <path>\t\t\t Change the current remote working directory.");
+        System.out.println("\tlcd <path>\t\t\t Change the current local working directory.");
+
+        System.out.println("\nSending, receiving, and changing files on the remote server:");
+        System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at <rpath> to local folder <lpath>.");
+        System.out.println("\tput <lpath> <rpath>\t Upload a local file or directory at <lpath> to the remote server at <rpath>.");
+        System.out.println("\tcp <source> <dest>\t Copy source directory or file to destination another location on the remote server");
+        System.out.println("\tchmod <perm> <file>\t Change permissions on specified file.");
+        System.out.println("\trm <path>\t\t\t Remove a single file on the remote server.");
+        System.out.println("\tmkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("\trmdir <path>\t\t Remove a directory on the remote server.");
+
+        System.out.println("\nOther commands:");
+        System.out.println("\thelp\t\t\t\t Show this list of commands.");
+        System.out.println("\tquit\t\t\t\t Disconnect and exit the program.");
     }
 
     private static void exitWithError(String error, Exception e, boolean debug) {
