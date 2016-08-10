@@ -21,7 +21,7 @@ public class FtpClient {
     public static void main( String[] args ) {
         Scanner scanner = new Scanner(System.in);
         ftpClient = new FTPClient();
-        if (args.length > 0) {
+        if (args.length > 1) {//if there is one arg or less, run normally and check for debug option
             String serverName = null;
             int port = -1;
             String username = null;
@@ -36,45 +36,46 @@ public class FtpClient {
             boolean putFlag = false;
             for (String arg : args) {
                 if (serverName == null) {
+                    //check for second arg of options with two args first
                     if(cdFlag && cdPath == null) {
                         cdPath = arg;
                     } else if (mkdirFlag && mkdirPath == null) {
                         mkdirPath = arg;
-                    }else if (rmFlag && rmPath == null) {
+                     }else if (rmFlag && rmPath == null) {
                         rmPath = arg;
-                    }else if (putFlag && putFile == null) {
+                    } else if (putFlag && putFile == null) {
                         putFile = arg;
-                    }else if (arg.equals("-cd")) {
+                    //check for options
+                    } else if (arg.equals("-cd")) {
                         if (cdFlag) {
                             exitWithError("Duplicate option: " + arg, null, debug);
                         }
                         cdFlag = true;
-                    }else if (arg.equals("-mkdir")) {
+                    } else if (arg.equals("-mkdir")) {
                         if (mkdirFlag) {
                             exitWithError("Duplicate option: " + arg, null, debug);
                         }
                         mkdirFlag = true;
-                    }else if (arg.equals("-rm")) {
+                    } else if (arg.equals("-rm")) {
                         if (rmFlag) {
                             exitWithError("Duplicate option: " + arg, null, debug);
                         }
                         rmFlag = true;
-                    }else if (arg.equals("-ls")) {
+                    } else if (arg.equals("-ls")) {
                         if (lsFlag) {
                             exitWithError("Duplicate option: " + arg, null, debug);
                         }
                         lsFlag = true;
-                    }else if (arg.equals("-put")) {
+                    } else if (arg.equals("-put")) {
                         if (putFlag) {
                             exitWithError("Duplicate option: " + arg, null, debug);
                         }
                         putFlag = true;
-                    }else if (arg.equals("-README")) {
-                        //printREADME();
+                    } else if (arg.equals("-README")) {
+                        printCMDHelp();
                         return;
-                    }else if (arg.startsWith("-")) {
-                        exitWithError("Unknown option: " + arg, null, debug);
-                    }else {
+                    } else {
+                        //no options left, set server name
                         serverName = arg;
                     }
                 } else if (port == -1) {
@@ -149,7 +150,7 @@ public class FtpClient {
 
 
         } else {
-            //unreachable code
+
             for (String arg : args) {
                 if (arg.equals("-debug")) {
                     debug = true;
@@ -446,6 +447,7 @@ public class FtpClient {
         input.close();
     }
 
+    //Change the permissions of a specified file
     private static void changeFilepermissions(String permissions, String file) {
         if (validPermissions(permissions)) {
             try {
@@ -459,6 +461,7 @@ public class FtpClient {
 
     }
 
+    //Check that the string passed represents a valid permissions arg
     private static boolean validPermissions(String permissions) {
         return permissions.matches("[0-7][0-7][0-7]");
     }
@@ -467,6 +470,7 @@ public class FtpClient {
         return scanner.nextLine();
     }
 
+    //Print the usage of this program running normally
     private static void printHelp() {
         System.out.println("This is a help section, this is where commands and usage info will go.");
         System.out.println("ls\t\t\t\t\t List files in current directory.");
@@ -481,10 +485,30 @@ public class FtpClient {
         System.out.println("quit\t\t\t\t Exit the program.");
     }
 
+    //Print the usage for running this application from the command line
+    private static void printCMDHelp() {
+        System.out.println("usage: java <packagename> [options] <args>");
+        System.out.println(" args are (in this order):");
+        System.out.println("   serverName\t\tThe name of the server");
+        System.out.println("   username\t\t\tThe user name in the server");
+        System.out.println("   port\t\t\t\tThe port number to use when connecting");
+        System.out.println("\t\t(user is prompted for password on program execution)");
+        System.out.println(" options are (options may appear in any order):");
+        System.out.println("-ls\t\t\t\t\t List files in current directory.");
+        System.out.println("-mkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("-rm <path>\t\t\t Remove a file from the remote server.");
+        System.out.println("-cd <path>\t\t\t Change the current working directory on the remote server.");
+        System.out.println("-put <file>\t\t\t Upload the file to the remote server.");
+        System.out.println("-README\t\t\t\t Print this readme and do nothing else.");
+    }
+
+    //Print the error message passed and the stack trace of e if debug is true, then exit with error message 1
     private static void exitWithError(String error, Exception e, boolean debug) {
         System.out.println(error);
         if (debug) {
-            e.printStackTrace();
+            if (e != null) {
+                e.printStackTrace();
+            }
         }
         disconnectFromServer();
         System.exit(1);
