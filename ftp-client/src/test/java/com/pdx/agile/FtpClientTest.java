@@ -7,6 +7,7 @@ import org.junit.After;
 import org.junit.Before;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 
@@ -80,7 +81,6 @@ public class FtpClientTest
 
     public void testConnectToOtherServer() throws IOException {
         setUpStreams();
-        setUpStreams();
         FtpClient f = new FtpClient();
         f.connectToServer("ftp.ed.ac.uk", 21);
         assertThat(outContent.toString().contains("Servers reply: 220"), equalTo(true));
@@ -144,6 +144,16 @@ public class FtpClientTest
         f.removeDirectory("NonexistentDirectory", "");
         f.listFiles();
         assertThat(outContent.toString().contains("Unable to remove directory: NonexistentDirectory"), equalTo(true));
+    }
+
+    public void testHappyPathForFile() throws IOException {
+        setUpStreams();
+        FtpClient f = new FtpClient();
+        loginToOurServer(f);
+        f.listLocalFiles();
+        assertThat(outContent.toString().contains("src"), equalTo(true));
+        f.listFiles();
+        assertThat(outContent.toString().contains("upload"), equalTo(true));
     }
 
 

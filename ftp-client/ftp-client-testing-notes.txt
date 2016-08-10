@@ -1,0 +1,57 @@
+This is a record of tests for our FTP Client program. We have a few unit tests, which are troublesome - if all of them are run at once, a few will fail, probably because the server is refusing so many rapid-fire connections. If only the failed tests are rerun, they will pass. 
+
+The scope of the project, and our coding style, made manual testing much faster for most functions. Below is an informal record of testing and results. 
+____________________________________________________________________
+
+FTP CLIENT MANUAL TESTING & INTEGRATION TESTS: 
+_____________________________________________________________________
+
+Positive tests: 
+
+Upload and download files and directories verified for: 
+	- absolute remote path, absolute local path
+	- absolute remote path, relative local path
+	- relative remote path, absolute local path 
+	- relative remote path, relative local path 
+Upload requires a / after remote path if remote path is a directory. 
+
+List local files and change local directory: exploratory testing done, see negative tests below
+
+Remove files and directories verified for local path, absolute path, path different from current working directory
+
+Change remote permissions to 000 and try to download: file not found; change permissions to 777 and try to download: success
+
+Copy files: [/upload/lydia is an existing directory; /upload/lydia/A_Elbereth.txt is an existing file]
+	- While in /upload, both "cp /upload/lydia /upload/lydia1" and "cp lydia lydia1" work as expected. 
+	- While in /upload/lydia, "cp /upload/lydia /upload/lydia1" does NOT work as expected - directory lydia1 is created in /upload/lydia, not in /upload. 
+	- While in /upload/lydia, "cp A_Elbereth.txt new" fails with an error message if directory "new" already exists; if it doesn't, a copy of A_Elbereth.txt is made inside a new directory "new"
+	- While in /upload, "cp A_Elbereth.txt new" fails with an error message if directory "new" already exists; if it doesn't, the command copies the entire contents of /upload into a new directory /upload/new (this is very weird!)
+	- Other combinations of parameters yield other weird results. Currently, the only thing that seems to work is copying a directory in the existing working directory to a name that doesn't already exist. 
+
+Prompts and user input for server and port work properly, prints server welcome on success. Sometimes hangs waiting for a connection with bad info, but not much we can do about that. Prompts and input for login info also work, don't give console access until successful login. Tested on both 138.68.1.7:8821 and ftp.ed.ac.uk:21. 
+
+Quit works properly and gives a y/n prompt. Since console is not available until successful login, user cannot attempt to quit before being connected and logged in.
+
+__________________________________________________________
+
+Negative tests that should be handled cleanly: 
+
+Download file into a protected directory (e.g. "/"): error message
+Upload file into a protected directory (e.g. "/" on remote): error message
+Download file that doesn't exist: error message
+Upload file that doesn't exist: error message
+Download file into directory that doesn't exist: error message
+Upload file into directory that doesn't exist: error message if uploading directory, creates directory if uploading file
+
+Garbage command: error message
+Wrong number of arguments to each command: ls, lls, pwd, lpwd, help, quit ignore arguments; others throw an error message
+
+Try to navigate to the parent of the remote root: no effect
+Try to navigate to the parent of the local root: no apparent effect (but distorts lpwd output)
+
+Try to change permissions to an invalid value: error message
+Try to change permissions of a nonexistent file: no message, but no effect
+
+Remove file or directory that doesn't exist: error message
+
+Bad login information: error message, retry until server disconnects after too many bad attempts

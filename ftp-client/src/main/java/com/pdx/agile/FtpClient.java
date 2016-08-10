@@ -26,6 +26,11 @@ public class FtpClient {
     private static String serverName;
     private static String password;
 
+    //Constructor needed for unit tests
+    FtpClient(){
+        ftpClient = new FTPClient();
+    }
+
     public static void main( String[] args ) {
 
         for (String arg : args) {
@@ -39,17 +44,16 @@ public class FtpClient {
 
         System.out.println("Welcome to our FTP client.\n");
 
-        /*
         String serverName = readUserInput(scanner, "Enter the server name: ");
         String portString = readUserInput(scanner, "Enter the port number: ");
         try {
             port = Integer.parseInt(portString);
         } catch (Exception e) {
             exitWithError("The port number must be an integer.", e , debug);
-        } */
+        }
 
 
-        serverName = "138.68.1.7";
+        //serverName = "138.68.1.7";
         ftpClient = new FTPClient();
 
         System.out.println("Attempting to connect to server...");
@@ -72,19 +76,19 @@ public class FtpClient {
 
         // Commented out for ease of testing, will be re-added at the end.
         //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
-    /*    do {
-            username = readUserInput(scanner, "Enter your username: ");
+        do {
+            userName = readUserInput(scanner, "Enter your username: ");
             password = readUserInput(scanner, "Enter your password: ");
 
-            keepGoing = loginToServer(username, password);
-        } while (!keepGoing); */
+            keepGoing = loginToServer(userName, password);
+        } while (!keepGoing);
 
 
 
         // Just for testing purposes so you don't actually have to type this in every time.
-        userName = "ftptestuser";
-        password = "2016AgileTeam2";
-        keepGoing = loginToServer(userName, password);
+        //userName = "ftptestuser";
+        //password = "2016AgileTeam2";
+        //keepGoing = loginToServer(userName, password);
 
         try {
             while (keepGoing) {
@@ -151,7 +155,7 @@ public class FtpClient {
                         try {
                             retrieveFile(remotePath, localPath);
                         } catch (IOException e) {
-			    System.out.println("Unable to retrieve the specified file or directory to remote server.");
+			    System.out.println("Unable to retrieve the specified file or directory from remote server.");
                         }
                     } catch (ArrayIndexOutOfBoundsException e) {
                         System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
@@ -288,7 +292,7 @@ public class FtpClient {
         return  success;
     }
 
-    static boolean rmRemoteServer(String rmPath) {
+    private static boolean rmRemoteServer(String rmPath) {
         boolean success = false;
 
         try {
@@ -326,12 +330,12 @@ public class FtpClient {
         return  success;
     }
 
-    static void showPath() throws IOException {
+    private static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
 
     // display current working local directory
-    static void showLocalPath() throws IOException {
+    private static void showLocalPath() throws IOException {
         String currentDir = System.getProperty("user.dir");
         System.out.println(currentDir);
     }
@@ -345,7 +349,7 @@ public class FtpClient {
        }
     }
 
-    static void retrieveFile(String remotePath, String localPath) throws IOException {
+    private static void retrieveFile(String remotePath, String localPath) throws IOException {
         String previousWorkingDirectory = ftpClient.printWorkingDirectory();
         String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
         if (ftpClient.printWorkingDirectory().equals(remotePath) ||
@@ -386,7 +390,7 @@ public class FtpClient {
 
 
     //helper function to strip the file name off of a path if supplied
-    static String getPathOnly(String path) {
+    private static String getPathOnly(String path) {
         int lastSlash = path.lastIndexOf("/");
         if (lastSlash == -1) {
             //there is no path!
@@ -398,7 +402,7 @@ public class FtpClient {
     }
 
 
-    static boolean goToPath(String remotePath) throws IOException {
+    private static boolean goToPath(String remotePath) throws IOException {
         if(remotePath.startsWith("/")){
             return ftpClient.changeWorkingDirectory(remotePath);
         } else {
@@ -407,7 +411,7 @@ public class FtpClient {
     }
 
     //Retrieve a directory structure recursively.
-    static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
+    private static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
         //remotePath is what to get, localPath is the directory to put it in
         if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
             //directory change worked - remotePath is a directory, so we get multiple (recurse)
@@ -443,7 +447,7 @@ public class FtpClient {
     }
 
     // Change local directory
-    static boolean changeLocalDir(String localDirectory) throws IOException {
+    private static boolean changeLocalDir(String localDirectory) throws IOException {
         boolean success = false;
         File directory;
 
@@ -456,7 +460,7 @@ public class FtpClient {
     }
 
     //Create and store local files recursively on remote server
-    static void sendFileRecursive(File localFileObj) throws IOException {
+    private static void sendFileRecursive(File localFileObj) throws IOException {
         //localPath is what to get, remotePath is the directory to put it in
         if (localFileObj.isDirectory()) {
             if (ftpClient.changeWorkingDirectory( "./" + localFileObj.getPath())) {
@@ -499,7 +503,7 @@ public class FtpClient {
 
 
     // Upload file or directory onto the server
-    static void sendFiles(String localPath, String remotePath) throws IOException {
+    private static void sendFiles(String localPath, String remotePath) throws IOException {
         File localFileObj;
         //Save the current PWD for remote and restore it when we are done
         String previousRemoteWorkingDirectory = ftpClient.printWorkingDirectory();
@@ -564,7 +568,7 @@ public class FtpClient {
         chdirRemoteServer(previousRemoteWorkingDirectory);
     }
 
-    static void changeFilepermissions(String permissions, String file) {
+    private static void changeFilepermissions(String permissions, String file) {
         if (validPermissions(permissions)) {
             try {
                 ftpClient.sendSiteCommand("chmod " + permissions + " " + file);
@@ -579,7 +583,7 @@ public class FtpClient {
 
     // Helper function that returns the absolute path of a given file, taking the current working directory of the
     // client into context.
-    static String getAbsolutePath(String path) {
+    private static String getAbsolutePath(String path) {
         String ret = "";
         try {
             String old = ftpClient.printWorkingDirectory();
@@ -601,7 +605,7 @@ public class FtpClient {
         return ret;
     }
 
-    static boolean copyDirectories(String source, String dest) {
+    private static boolean copyDirectories(String source, String dest) {
         boolean success = false;
 
         dest = getAbsolutePath(dest);
@@ -652,7 +656,7 @@ public class FtpClient {
     }
 
 
-    static boolean copyDirectory(FTPClient temp, String path) {
+    private static boolean copyDirectory(FTPClient temp, String path) {
         boolean success = false;
         try {
             success = ftpClient.makeDirectory(path);
@@ -693,7 +697,7 @@ public class FtpClient {
     }
 
     // Function to copy a single file on the server to another destination on the server.
-    static boolean copyFile(String file, String destPath) throws IOException {
+    private static boolean copyFile(String file, String destPath) throws IOException {
         // Create new FTPClient for transfer.
         FTPClient dest = new FTPClient();
         dest.connect(serverName, port);
@@ -776,7 +780,7 @@ public class FtpClient {
     }
 
 
-    static boolean validPermissions(String permissions) {
+    private static boolean validPermissions(String permissions) {
         return permissions.matches("[0-7][0-7][0-7]");
     }
     private static String readUserInput(Scanner scanner, String prompt) {
@@ -793,11 +797,13 @@ public class FtpClient {
         System.out.println("\tpwd\t\t\t\t\t Show current working remote directory.");
         System.out.println("\tlpwd\t\t\t\t Show current working local directory.");
         System.out.println("\tcd <path>\t\t\t Change the current remote working directory.");
-        System.out.println("\tlcd <path>\t\t\t Change the current local working directory.");
+        System.out.println("\tlcd <path>\t\t\t Change the current local working directory; create single directory " +
+                "if it doesn't exist.");
 
         System.out.println("\nSending, receiving, and changing files on the remote server:");
         System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at <rpath> to local folder <lpath>.");
         System.out.println("\tput <lpath> <rpath>\t Upload a local file or directory at <lpath> to the remote server at <rpath>.");
+        System.out.println("\t\t\t\t\t\t\t (If rpath is a directory, it must end with a '/'.");
         System.out.println("\tcp <source> <dest>\t Copy source directory or file to destination another location on the remote server");
         System.out.println("\tchmod <perm> <file>\t Change permissions on specified file.");
         System.out.println("\trm <path>\t\t\t Remove a single file on the remote server.");
