@@ -1,4 +1,10 @@
 # AgileSummer2016
+Eiyad Alkadi
+Jack Chen
+Lydia Simmons
+Kevin Jacobson
+Brandon Giatti
+Gustaf Hegnell
 
 
 ## Running the project
