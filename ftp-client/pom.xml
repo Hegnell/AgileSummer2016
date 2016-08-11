@@ -19,6 +19,12 @@
       <artifactId>commons-net</artifactId>
       <version>3.5</version>
     </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -32,9 +38,6 @@
               <mainClass>com.pdx.agile.FtpClient</mainClass>
             </manifest>
           </archive>
-	  <descriptorRefs>
-	    <descriptorRef>jar-with-dependencies</descriptorRef>
-	  </descriptorRefs>
         </configuration>
       </plugin>
       <plugin>

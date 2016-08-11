@@ -3,15 +3,10 @@ package com.pdx.agile;
 import java.io.*;
 import java.util.*;
 
-//import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
-//import com.sun.tools.javac.file.SymbolArchive;
-import org.apache.commons.net.*;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.io.Util;
-import sun.net.ftp.FtpDirEntry;
 
 /**
  * FTP client.
@@ -25,6 +20,11 @@ public class FtpClient {
     private static int port;
     private static String serverName;
     private static String password;
+
+    //Constructor needed for unit tests
+    FtpClient(){
+        ftpClient = new FTPClient();
+    }
 
     public static void main( String[] args ) {
 
@@ -225,17 +225,18 @@ public class FtpClient {
         }
     }
 
+
     // Connect to the server.
-    private static boolean connectToServer(String serverName, int port) throws IOException{
+    static boolean connectToServer(String serverName, int port) throws IOException{
         ftpClient.connect(serverName, port);
-        
+
         int reply = ftpClient.getReplyCode();
         System.out.println("Servers reply: "  + reply);
 
         return true;
     }
 
-    private static boolean loginToServer(String username, String password) {
+    static boolean loginToServer(String username, String password) {
         boolean login = false;
 
         try {
@@ -256,7 +257,7 @@ public class FtpClient {
         return login;
     }
 
-    private static void disconnectFromServer() {
+    static void disconnectFromServer() {
         if (ftpClient.isConnected()) {
             try {
                 System.out.println("Disconnecting...");
@@ -268,7 +269,7 @@ public class FtpClient {
         }
     }
 
-    private static boolean mkdirRemoteServer(String makePath) {
+    static boolean mkdirRemoteServer(String makePath) {
         boolean success = false;
 
         try {
@@ -288,7 +289,7 @@ public class FtpClient {
         return  success;
     }
 
-    private static boolean rmRemoteServer(String rmPath) {
+    static boolean rmRemoteServer(String rmPath) {
         boolean success = false;
 
         try {
@@ -308,7 +309,7 @@ public class FtpClient {
         return  success;
     }
 
-    private static boolean chdirRemoteServer(String cdPath) {
+    static boolean chdirRemoteServer(String cdPath) {
         boolean success = false;
 
         try {
@@ -326,18 +327,18 @@ public class FtpClient {
         return  success;
     }
 
-    private static void showPath() throws IOException {
+    static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
 
     // display current working local directory
-    private static void showLocalPath() throws IOException {
+    static void showLocalPath() throws IOException {
         String currentDir = System.getProperty("user.dir");
         System.out.println(currentDir);
     }
 
     // List files story.
-    private static void listFiles() throws IOException {
+    static void listFiles() throws IOException {
        FTPFile[] files = ftpClient.listFiles();
 
        for (FTPFile file : files) {
@@ -345,7 +346,7 @@ public class FtpClient {
        }
     }
 
-    private static void retrieveFile(String remotePath, String localPath) throws IOException {
+    static void retrieveFile(String remotePath, String localPath) throws IOException {
         String previousWorkingDirectory = ftpClient.printWorkingDirectory();
         String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
         if (ftpClient.printWorkingDirectory().equals(remotePath) ||
@@ -375,7 +376,7 @@ public class FtpClient {
     }
 
     //helper function to strip off the file name from a relative path
-    public static String getFilenameFromPath(String path) {
+    static String getFilenameFromPath(String path) {
         int lastSlash = path.lastIndexOf("/");
         if(lastSlash == path.length()) {
             path = path.substring(0, path.length() - 1);
@@ -386,7 +387,7 @@ public class FtpClient {
 
 
     //helper function to strip the file name off of a path if supplied
-    public static String getPathOnly(String path) {
+    static String getPathOnly(String path) {
         int lastSlash = path.lastIndexOf("/");
         if (lastSlash == -1) {
             //there is no path!
@@ -398,7 +399,7 @@ public class FtpClient {
     }
 
 
-    private static boolean goToPath(String remotePath) throws IOException {
+    static boolean goToPath(String remotePath) throws IOException {
         if(remotePath.startsWith("/")){
             return ftpClient.changeWorkingDirectory(remotePath);
         } else {
@@ -407,7 +408,7 @@ public class FtpClient {
     }
 
     //Retrieve a directory structure recursively.
-    private static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
+    static void retrieveFileRecursive(String remotePath, String localPath) throws IOException {
         //remotePath is what to get, localPath is the directory to put it in
         if (ftpClient.changeWorkingDirectory("./" + remotePath) == true) {
             //directory change worked - remotePath is a directory, so we get multiple (recurse)
@@ -430,7 +431,7 @@ public class FtpClient {
 
 
     // List local directories and files
-    private static void listLocalFiles() throws IOException {
+    static void listLocalFiles() throws IOException {
         // set the current working directory
         String currentDir = System.getProperty("user.dir");
 
@@ -443,7 +444,7 @@ public class FtpClient {
     }
 
     // Change local directory
-    private static boolean changeLocalDir(String localDirectory) throws IOException {
+    static boolean changeLocalDir(String localDirectory) throws IOException {
         boolean success = false;
         File directory;
 
@@ -456,7 +457,7 @@ public class FtpClient {
     }
 
     //Create and store local files recursively on remote server
-    private static void sendFileRecursive(File localFileObj) throws IOException {
+    static void sendFileRecursive(File localFileObj) throws IOException {
         //localPath is what to get, remotePath is the directory to put it in
         if (localFileObj.isDirectory()) {
             if (ftpClient.changeWorkingDirectory( "./" + localFileObj.getPath())) {
@@ -499,7 +500,7 @@ public class FtpClient {
 
 
     // Upload file or directory onto the server
-    private static void sendFiles(String localPath, String remotePath) throws IOException {
+    static void sendFiles(String localPath, String remotePath) throws IOException {
         File localFileObj;
         //Save the current PWD for remote and restore it when we are done
         String previousRemoteWorkingDirectory = ftpClient.printWorkingDirectory();
@@ -564,7 +565,7 @@ public class FtpClient {
         chdirRemoteServer(previousRemoteWorkingDirectory);
     }
 
-    private static void changeFilepermissions(String permissions, String file) {
+    static void changeFilepermissions(String permissions, String file) {
         if (validPermissions(permissions)) {
             try {
                 ftpClient.sendSiteCommand("chmod " + permissions + " " + file);
@@ -579,7 +580,7 @@ public class FtpClient {
 
     // Helper function that returns the absolute path of a given file, taking the current working directory of the
     // client into context.
-    private static String getAbsolutePath(String path) {
+    static String getAbsolutePath(String path) {
         String ret = "";
         try {
             String old = ftpClient.printWorkingDirectory();
@@ -601,7 +602,7 @@ public class FtpClient {
         return ret;
     }
 
-    private static boolean copyDirectories(String source, String dest) {
+    static boolean copyDirectories(String source, String dest) {
         boolean success = false;
 
         dest = getAbsolutePath(dest);
@@ -652,7 +653,7 @@ public class FtpClient {
     }
 
 
-    private static boolean copyDirectory(FTPClient temp, String path) {
+    static boolean copyDirectory(FTPClient temp, String path) {
         boolean success = false;
         try {
             success = ftpClient.makeDirectory(path);
@@ -693,7 +694,7 @@ public class FtpClient {
     }
 
     // Function to copy a single file on the server to another destination on the server.
-    private static boolean copyFile(String file, String destPath) throws IOException {
+    static boolean copyFile(String file, String destPath) throws IOException {
         // Create new FTPClient for transfer.
         FTPClient dest = new FTPClient();
         dest.connect(serverName, port);
@@ -719,7 +720,7 @@ public class FtpClient {
     }
 
     // Function to remove an entire directory recursively on the server.
-    private static boolean removeDirectory(String currentPath, String directory) throws IOException {
+    static boolean removeDirectory(String currentPath, String directory) throws IOException {
         boolean success = false;
 
         String path;
@@ -776,15 +777,15 @@ public class FtpClient {
     }
 
 
-    private static boolean validPermissions(String permissions) {
+    static boolean validPermissions(String permissions) {
         return permissions.matches("[0-7][0-7][0-7]");
     }
-    private static String readUserInput(Scanner scanner, String prompt) {
+    static String readUserInput(Scanner scanner, String prompt) {
         System.out.print(prompt);
         return scanner.nextLine();
     }
 
-    private static void printHelp() {
+    static void printHelp() {
         System.out.println("Need some help? Here are the supported FTP client commands:");
 
         System.out.println("\nNavigating and getting around:");
@@ -819,7 +820,7 @@ public class FtpClient {
     }
 
     // Confirms the action specified by the string passed. Returns a boolean value representing the user's decision.
-    private static boolean confirm(String action, Scanner scanner) {
+    static boolean confirm(String action, Scanner scanner) {
         String input;
         System.out.println("Are you sure you want to " + action + "?(y/n)");
 
