@@ -1,3 +1,6 @@
+// CS 510 Agile
+// 8/10/2016
+
 package com.pdx.agile;
 
 import java.io.*;
@@ -9,7 +12,7 @@ import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
 
 /**
- * FTP client.
+ * This is the main FTP Client class which hosts all of the FTP functionality.
  *
  */
 public class FtpClient {
@@ -26,52 +29,180 @@ public class FtpClient {
         ftpClient = new FTPClient();
     }
 
+    /**
+     *
+     * @param args Command line arguments.
+     */
     public static void main( String[] args ) {
-
-        for (String arg : args) {
-            if (arg.equals("-debug")) {
-                debug = true;
-            }
-        }
-
         Scanner scanner = new Scanner(System.in);
-        port = 8821;
-
-        System.out.println("Welcome to our FTP client.\n");
-
-        /*
-        String serverName = readUserInput(scanner, "Enter the server name: ");
-        String portString = readUserInput(scanner, "Enter the port number: ");
-        try {
-            port = Integer.parseInt(portString);
-        } catch (Exception e) {
-            exitWithError("The port number must be an integer.", e , debug);
-        } */
-
-
-        serverName = "138.68.1.7";
         ftpClient = new FTPClient();
+        if (args.length > 1) {//if there is one arg or less, run normally and check for debug option
+            String serverName = null;
+            int port = -1;
+            String username = null;
+            boolean cdFlag = false;
+            String cdPath = null;
+            boolean mkdirFlag = false;
+            String mkdirPath = null;
+            boolean rmFlag = false;
+            String rmPath = null;
+            boolean lsFlag = false;
+            String putFile = null;
+            boolean putFlag = false;
+            for (String arg : args) {
+                if (serverName == null) {
+                    //check for second arg of options with two args first
+                    if (cdFlag && cdPath == null) {
+                        cdPath = arg;
+                    } else if (mkdirFlag && mkdirPath == null) {
+                        mkdirPath = arg;
+                    } else if (rmFlag && rmPath == null) {
+                        rmPath = arg;
+                    } else if (putFlag && putFile == null) {
+                        putFile = arg;
+                        //check for options
+                    } else if (arg.equals("-cd")) {
+                        if (cdFlag) {
+                            exitWithError("Duplicate option: " + arg, null, debug);
+                        }
+                        cdFlag = true;
+                    } else if (arg.equals("-mkdir")) {
+                        if (mkdirFlag) {
+                            exitWithError("Duplicate option: " + arg, null, debug);
+                        }
+                        mkdirFlag = true;
+                    } else if (arg.equals("-rm")) {
+                        if (rmFlag) {
+                            exitWithError("Duplicate option: " + arg, null, debug);
+                        }
+                        rmFlag = true;
+                    } else if (arg.equals("-ls")) {
+                        if (lsFlag) {
+                            exitWithError("Duplicate option: " + arg, null, debug);
+                        }
+                        lsFlag = true;
+                    } else if (arg.equals("-put")) {
+                        if (putFlag) {
+                            exitWithError("Duplicate option: " + arg, null, debug);
+                        }
+                        putFlag = true;
+                    } else if (arg.equals("-README")) {
+                        printCMDHelp();
+                        return;
+                    } else {
+                        //no options left, set server name
+                        serverName = arg;
+                    }
+                } else if (port == -1) {
+                    port = Integer.parseInt(arg);
+                } else if (username == null) {
+                    username = arg;
+                } else {
+                    exitWithError("Too many arguments" + arg, null, debug);
+                }
+            }
+            //check for null host/port/username
+            if (serverName == null) {
+                exitWithError("Missing server name", null, debug);
+            } else if (port == -1) {
+                exitWithError("Missing port number", null, debug);
+            } else if (username == null) {
+                exitWithError("Missing username", null, debug);
+            }
 
-        System.out.println("Attempting to connect to server...");
-        try {
-            boolean connect = connectToServer(serverName, port);
-        } catch (IOException e) {
-            exitWithError("Unable to connect to the server.", e, debug);
-        }
+            System.out.println("Attempting to connect to server...");
+            try {
+                boolean connect = connectToServer(serverName, port);
+            } catch (IOException e) {
+                exitWithError("Unable to connect to the server.", e, debug);
+            }
 
-        System.out.println("Connected to server successfully!");
+            try {
+                System.out.println("Connected to server successfully!");
 
-        //print server's welcome message
-        System.out.println(ftpClient.getReplyString());
+                //print server's welcome message
+                System.out.println(ftpClient.getReplyString());
 
-        // enter local passive mode to get files/directories to display
-        ftpClient.enterLocalPassiveMode();
+                // enter local passive mode to get files/directories to display
+                ftpClient.enterLocalPassiveMode();
+
+                boolean loggedIn = false;
+                String password;
+                //Get password from user and attempt to log in
+                while (!loggedIn) {
+                    password = readUserInput(scanner, "Enter the password: ");
+                    loggedIn = loginToServer(username, password);
+                }
+
+                //execute options
+                if (cdFlag) {
+                    chdirRemoteServer(cdPath);
+                }
+                if (mkdirFlag) {
+                    mkdirRemoteServer(mkdirPath);
+                }
+                if (rmFlag) {
+                    rmRemoteServer(rmPath);
+                }
+/*                if (putFlag) {
+                    try {
+                        sendFiles(putFile);
+                    } catch (IOException e) {
+                        exitWithError("Unable to upload the file onto the server.", e, debug);
+                    }
+                }*/
+                if (lsFlag) {
+                    try {
+                        listFiles();
+                    } catch (IOException e) {
+                        exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                    }
+                }
+            } finally {
+                disconnectFromServer();
+            }
+        } else {
+            for (String arg : args) {
+                if (arg.equals("-debug")) {
+                    debug = true;
+                }
+            }
+
+            System.out.println("Welcome to our FTP client.\n");
+
+            System.out.println("Test server IP is 138.68.1.7");
+            System.out.println("Test port is 8821");
+            String serverName = readUserInput(scanner, "Enter the server name: ");
+            String portString = readUserInput(scanner, "Enter the port number: ");
+            try {
+                port = Integer.parseInt(portString);
+            } catch (Exception e) {
+                exitWithError("The port number must be an integer.", e , debug);
+            }
 
 
-        boolean keepGoing = false;
+            ftpClient = new FTPClient();
 
-        // Commented out for ease of testing, will be re-added at the end.
-        //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
+            System.out.println("Attempting to connect to server...");
+            try {
+                boolean connect = connectToServer(serverName, port);
+            } catch (IOException e) {
+                exitWithError("Unable to connect to the server.", e, debug);
+            }
+
+            System.out.println("Connected to server successfully!");
+
+            //print server's welcome message
+            System.out.println(ftpClient.getReplyString());
+
+            // enter local passive mode to get files/directories to display
+            ftpClient.enterLocalPassiveMode();
+
+
+            boolean keepGoing = false;
+
+            // Commented out for ease of testing, will be re-added at the end.
+            //if loginToServer returns false, allow the user to retry until the FTP server disconnects.
     /*    do {
             username = readUserInput(scanner, "Enter your username: ");
             password = readUserInput(scanner, "Enter your password: ");
@@ -80,151 +211,151 @@ public class FtpClient {
         } while (!keepGoing); */
 
 
+            // Just for testing purposes so you don't actually have to type this in every time.
+            userName = "ftptestuser";
+            password = "2016AgileTeam2";
+            keepGoing = loginToServer(userName, password);
 
-        // Just for testing purposes so you don't actually have to type this in every time.
-        userName = "ftptestuser";
-        password = "2016AgileTeam2";
-        keepGoing = loginToServer(userName, password);
+            // The main loop that waits for command from the user.
+            try {
+                while (keepGoing) {
 
-        try {
-            while (keepGoing) {
-
-                System.out.print(">> ");
-                String[] userInput = scanner.nextLine().trim().split(" ");
-                String firstArg = userInput[0];
-                if (firstArg.equals("pwd")) {
-                    try {
-                        showPath();
-                    } catch (IOException e) {
-                        exitWithError("Was unable to get the path on the server.", e, debug);
-                    }
-                } else if (firstArg.equals("lpwd")) {
-                    try{
-                        showLocalPath();
-                    } catch (IOException e){
-                        exitWithError("Unable to get the local path.", e, debug);
-                    }
-                } else if (firstArg.equals("ls")) {
-                    try {
-                        listFiles();
-                    } catch (IOException e) {
-                        exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
-                    }
-                } else if (firstArg.equals("lls")) {
-                    try{
-                        listLocalFiles();
-                    } catch(IOException e){
-                        exitWithError("Unable to list local directories or files.", e, debug);
-                    }
-                } else if (firstArg.equals("mkdir")) {
-                    if (userInput.length != 2) {
-                        System.out.println("mkdir: and absolute or relative path is required argument\n");
-                        printHelp();
-                    } else {
-                        mkdirRemoteServer(userInput[1]);
-                    }
-                } else if (firstArg.equals("rm")) {
-                    if (userInput.length != 2) {
-                        System.out.println("rm: and absolute or relative path is required argument\n");
-                        printHelp();
-                    } else {
-                        rmRemoteServer(userInput[1]);
-                    }
-                } else if (firstArg.equals("cd")) {
-                    if (userInput.length != 2) {
-                        System.out.println("Incorrect arguments specified to cd. Type \"help\" for usage.\n");
-                    } else {
-                        chdirRemoteServer(userInput[1]);
-                    }
-                } else if (firstArg.equals("lcd")) {
-                    try{
-                        if(userInput[1] != null && !userInput[1].equals("")){
-                            changeLocalDir(userInput[1]);
-                        }
-                    } catch (IOException e){
-                        exitWithError("Unable to change local directory", e, debug);
-                    }
-                } else if (firstArg.equals("get")) {
-                    try {
-                        String remotePath = userInput[1];
-                        String localPath = userInput[2];
+                    System.out.print(">> ");
+                    String[] userInput = scanner.nextLine().trim().split(" ");
+                    String firstArg = userInput[0];
+                    if (firstArg.equals("pwd")) {
                         try {
-                            retrieveFile(remotePath, localPath);
+                            showPath();
                         } catch (IOException e) {
-			    System.out.println("Unable to retrieve the specified file or directory to remote server.");
+                            exitWithError("Was unable to get the path on the server.", e, debug);
                         }
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
-                    }
-                } else if (firstArg.equals("put")) {
-                    try {
-                        String localPath = userInput[1];
-                        String remotePath = userInput[2];
+                    } else if (firstArg.equals("lpwd")) {
                         try {
-                            sendFiles(localPath, remotePath);
+                            showLocalPath();
                         } catch (IOException e) {
-			    System.out.println("Unable to send the specified file or directory to remote server.");
+                            exitWithError("Unable to get the local path.", e, debug);
                         }
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        System.out.println("Incorrect arguments specified to put. Type \"help\" for usage.\n");
-                    }
-                } else if (firstArg.equals("chmod")) {
-                    if (userInput.length != 3) {
-                        System.out.println("Incorrect number of arguments provided to chmod.");
-                    } else {
-                        changeFilepermissions(userInput[1], userInput[2]);
-                    }
-                } else if (firstArg.equals("cp")) {
-                    if (userInput.length != 3) {
-                        System.out.println("Incorrect number of arguments provided to cp.");
-                    } else {
-
+                    } else if (firstArg.equals("ls")) {
                         try {
-                            String path = ftpClient.printWorkingDirectory();
-                            if (copyDirectories(userInput[1], userInput[2])) {
-                                System.out.println("Copied directory successfully.");
-                                // Having tons of issue here, only way to get it working smoothly was to disconnect and
-                                // reconnect.
-                                ftpClient.disconnect();
-                                ftpClient.connect(serverName, port);
-                                ftpClient.login(userName, password);
-                                ftpClient.enterLocalPassiveMode();
-                                ftpClient.changeWorkingDirectory(path);
-                            } else {
-                                System.out.println("Unable to copy the directories.");
+                            listFiles();
+                        } catch (IOException e) {
+                            exitWithError("Was unable to list the contents of the directory on the server.", e, debug);
+                        }
+                    } else if (firstArg.equals("lls")) {
+                        try {
+                            listLocalFiles();
+                        } catch (IOException e) {
+                            exitWithError("Unable to list local directories or files.", e, debug);
+                        }
+                    } else if (firstArg.equals("mkdir")) {
+                        if (userInput.length != 2) {
+                            System.out.println("mkdir: and absolute or relative path is required argument\n");
+                            printHelp();
+                        } else {
+                            mkdirRemoteServer(userInput[1]);
+                        }
+                    } else if (firstArg.equals("rm")) {
+                        if (userInput.length != 2) {
+                            System.out.println("rm: and absolute or relative path is required argument\n");
+                            printHelp();
+                        } else {
+                            rmRemoteServer(userInput[1]);
+                        }
+                    } else if (firstArg.equals("cd")) {
+                        if (userInput.length != 2) {
+                            System.out.println("Incorrect arguments specified to cd. Type \"help\" for usage.\n");
+                        } else {
+                            chdirRemoteServer(userInput[1]);
+                        }
+                    } else if (firstArg.equals("lcd")) {
+                        try {
+                            if (userInput[1] != null && !userInput[1].equals("")) {
+                                changeLocalDir(userInput[1]);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            exitWithError("Unable to change local directory", e, debug);
                         }
-
-                    }
-                } else if (firstArg.equals("rmdir")) {
-                    if (userInput.length != 2) {
-                         System.out.println("Incorrect number of arguments provided to rmdir.");
-                    } else {
+                    } else if (firstArg.equals("get")) {
                         try {
-                            if (removeDirectory(userInput[1], "")) {
-                                System.out.println("Removed directory successfully.");
+                            String remotePath = userInput[1];
+                            String localPath = userInput[2];
+                            try {
+                                retrieveFile(remotePath, localPath);
+                            } catch (IOException e) {
+                                System.out.println("Unable to retrieve the specified file or directory to remote server.");
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (ArrayIndexOutOfBoundsException e) {
+                            System.out.println("Incorrect arguments specified to get. Type \"help\" for usage.\n");
                         }
+                    } else if (firstArg.equals("put")) {
+                        try {
+                            String localPath = userInput[1];
+                            String remotePath = userInput[2];
+                            try {
+                                sendFiles(localPath, remotePath);
+                            } catch (IOException e) {
+                                System.out.println("Unable to send the specified file or directory to remote server.");
+                            }
+                        } catch (ArrayIndexOutOfBoundsException e) {
+                            System.out.println("Incorrect arguments specified to put. Type \"help\" for usage.\n");
+                        }
+                    } else if (firstArg.equals("chmod")) {
+                        if (userInput.length != 3) {
+                            System.out.println("Incorrect number of arguments provided to chmod.");
+                        } else {
+                            changeFilepermissions(userInput[1], userInput[2]);
+                        }
+                    } else if (firstArg.equals("cpdir")) {
+                        if (userInput.length != 3) {
+                            System.out.println("Incorrect number of arguments provided to cp.");
+                        } else {
+
+                            try {
+                                String path = ftpClient.printWorkingDirectory();
+                                if (copyDirectories(userInput[1], userInput[2])) {
+                                    System.out.println("Copied directory successfully.");
+                                    // Having tons of issue here, only way to get it working smoothly was to disconnect and
+                                    // reconnect.
+                                    ftpClient.disconnect();
+                                    ftpClient.connect(serverName, port);
+                                    ftpClient.login(userName, password);
+                                    ftpClient.enterLocalPassiveMode();
+                                    ftpClient.changeWorkingDirectory(path);
+                                } else {
+                                    System.out.println("Unable to copy the directories.");
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                        }
+                    } else if (firstArg.equals("rmdir")) {
+                        if (userInput.length != 2) {
+                            System.out.println("Incorrect number of arguments provided to rmdir.");
+                        } else {
+                            try {
+                                if (removeDirectory(userInput[1], "")) {
+                                    System.out.println("Removed directory successfully.");
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } else if (firstArg.equals("quit")) {
+                        if (confirm("disconnect and quit the application", scanner)) {
+                            keepGoing = false;
+                        }
+                    } else if (firstArg.equals("help")) {
+                        printHelp();
+                    } else {
+                        System.out.println("Did not understand your command, type \"help\" for available commands.");
                     }
-                } else if (firstArg.equals("quit")) {
-                    if (confirm("disconnect and quit the application", scanner)) {
-                        keepGoing = false;
-                    }
-                } else if (firstArg.equals("help")) {
-                    printHelp();
-                } else {
-                    System.out.println("Did not understand your command, type \"help\" for available commands.");
                 }
+            } finally {
+                disconnectFromServer();
             }
-        } finally {
-            disconnectFromServer();
         }
     }
-
 
     // Connect to the server.
     static boolean connectToServer(String serverName, int port) throws IOException{
@@ -236,6 +367,7 @@ public class FtpClient {
         return true;
     }
 
+    // Login to the server.
     static boolean loginToServer(String username, String password) {
         boolean login = false;
 
@@ -257,6 +389,7 @@ public class FtpClient {
         return login;
     }
 
+    // Disconnect from the server.
     static void disconnectFromServer() {
         if (ftpClient.isConnected()) {
             try {
@@ -269,6 +402,7 @@ public class FtpClient {
         }
     }
 
+    // Make a directory on the remote server.
     static boolean mkdirRemoteServer(String makePath) {
         boolean success = false;
 
@@ -289,6 +423,7 @@ public class FtpClient {
         return  success;
     }
 
+    // Remove a directory on the remote server.
     static boolean rmRemoteServer(String rmPath) {
         boolean success = false;
 
@@ -309,6 +444,7 @@ public class FtpClient {
         return  success;
     }
 
+    // CHange directories on the remote server.
     static boolean chdirRemoteServer(String cdPath) {
         boolean success = false;
 
@@ -327,6 +463,7 @@ public class FtpClient {
         return  success;
     }
 
+    // Display the current path on the remot server.
     static void showPath() throws IOException {
         System.out.println(ftpClient.printWorkingDirectory());
     }
@@ -346,6 +483,7 @@ public class FtpClient {
        }
     }
 
+    // Retrieve a file from the remote server.
     static void retrieveFile(String remotePath, String localPath) throws IOException {
         String previousWorkingDirectory = ftpClient.printWorkingDirectory();
         String root = getFilenameFromPath(remotePath); //the name - NOT full path - of the directory or file requested
@@ -398,7 +536,7 @@ public class FtpClient {
 
     }
 
-
+    // Go to a specific path on the remote server.
     static boolean goToPath(String remotePath) throws IOException {
         if(remotePath.startsWith("/")){
             return ftpClient.changeWorkingDirectory(remotePath);
@@ -565,6 +703,7 @@ public class FtpClient {
         chdirRemoteServer(previousRemoteWorkingDirectory);
     }
 
+    // Change file permissions on the server.
     static void changeFilepermissions(String permissions, String file) {
         if (validPermissions(permissions)) {
             try {
@@ -602,6 +741,7 @@ public class FtpClient {
         return ret;
     }
 
+    // Copy directories on the server.
     static boolean copyDirectories(String source, String dest) {
         boolean success = false;
 
@@ -652,7 +792,7 @@ public class FtpClient {
         return success;
     }
 
-
+    // Copy a single directory on the server.
     static boolean copyDirectory(FTPClient temp, String path) {
         boolean success = false;
         try {
@@ -785,12 +925,13 @@ public class FtpClient {
         return scanner.nextLine();
     }
 
+    // Print the help menu.
     static void printHelp() {
         System.out.println("Need some help? Here are the supported FTP client commands:");
 
         System.out.println("\nNavigating and getting around:");
-        System.out.println("\tls\t\t\t\t\t List directories or files in current remote directory.");
-        System.out.println("\tlls\t\t\t\t\t List local directories or files in the current local path.");
+        System.out.println("\tls\t\t\t List directories or files in current remote directory.");
+        System.out.println("\tlls\t\t\t List local directories or files in the current local path.");
         System.out.println("\tpwd\t\t\t\t\t Show current working remote directory.");
         System.out.println("\tlpwd\t\t\t\t Show current working local directory.");
         System.out.println("\tcd <path>\t\t\t Change the current remote working directory.");
@@ -799,7 +940,7 @@ public class FtpClient {
         System.out.println("\nSending, receiving, and changing files on the remote server:");
         System.out.println("\tget <rpath> <lpath>\t Download a remote file or directory at <rpath> to local folder <lpath>.");
         System.out.println("\tput <lpath> <rpath>\t Upload a local file or directory at <lpath> to the remote server at <rpath>.");
-        System.out.println("\tcp <source> <dest>\t Copy source directory or file to destination another location on the remote server");
+        System.out.println("\tcpdir <source> <dest>\t Copy source directory or file to destination another location on the remote server");
         System.out.println("\tchmod <perm> <file>\t Change permissions on specified file.");
         System.out.println("\trm <path>\t\t\t Remove a single file on the remote server.");
         System.out.println("\tmkdir <path>\t\t Create a directory on the remote server.");
@@ -810,6 +951,24 @@ public class FtpClient {
         System.out.println("\tquit\t\t\t\t Disconnect and exit the program.");
     }
 
+    //Print the usage for running this application from the command line
+    private static void printCMDHelp() {
+        System.out.println("usage: java <packagename> [options] <args>");
+        System.out.println(" args are (in this order):");
+        System.out.println("   serverName\t\tThe name of the server");
+        System.out.println("   username\t\t\tThe user name in the server");
+        System.out.println("   port\t\t\t\tThe port number to use when connecting");
+        System.out.println("\t\t(user is prompted for password on program execution)");
+        System.out.println(" options are (options may appear in any order):");
+        System.out.println("-ls\t\t\t\t\t List files in current directory.");
+        System.out.println("-mkdir <path>\t\t Create a directory on the remote server.");
+        System.out.println("-rm <path>\t\t\t Remove a file from the remote server.");
+        System.out.println("-cd <path>\t\t\t Change the current working directory on the remote server.");
+        System.out.println("-put <file>\t\t\t Upload the file to the remote server.");
+        System.out.println("-README\t\t\t\t Print this readme and do nothing else.");
+    }
+
+    // Exit with a specific error.
     private static void exitWithError(String error, Exception e, boolean debug) {
         System.out.println(error);
         if (debug) {

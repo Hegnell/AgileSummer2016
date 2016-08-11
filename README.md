@@ -1,5 +1,21 @@
 # AgileSummer2016
 
+
+## Running the project
+
+To run the project:
+
+Clone the repository from GitHub
+
+Navigate to the ftp-client directory
+
+run "mvn clean" and then "mvn package -DskipTests"
+
+(The unit tests currently work on their own but break the maven build)
+
+To run the client, use "java -jar target/ftp-client-1.0-SNAPSHOT.jar"
+
+## GitHub Workflow
 ## Branching
 
 To start working on the project:
